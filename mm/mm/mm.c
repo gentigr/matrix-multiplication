@@ -1,22 +1,39 @@
+#define _CRT_SECURE_NO_DEPRECATE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
 #include <Windows.h>
 
+#define FROM_FILE FALSE
+
+#define PATH_TO_MATRIX_A "matrix_b.txt"
+#define PATH_TO_MATRIX_B "matrix_a.txt"
+
 #define SIZE_A1 100
 #define SIZE_B1 400
 #define SIZE_A2 400
 #define SIZE_B2 200
 
-#define MAX_ELEMENT 10
+#define MAX_ELEMENT 1000
 
 void generate_matrix(float **a, int size_a, int size_b)
 {
 	srand((unsigned int)time(NULL));
 	for (int i = 0; i < size_a; i++) {
 		for (int j = 0; j < size_b; j++) {
-			a[i][j] = rand() % MAX_ELEMENT + 1;
+			a[i][j] = (float)((rand() % MAX_ELEMENT + 1) / 10.);
+		}
+	}
+}
+
+void read_matrix_from_file(float **a, int size_a, int size_b)
+{
+	srand((unsigned int)time(NULL));
+	for (int i = 0; i < size_a; i++) {
+		for (int j = 0; j < size_b; j++) {
+			a[i][j] = (float)((rand() % MAX_ELEMENT + 1) / 10.);
 		}
 	}
 }
@@ -78,26 +95,102 @@ void mm(float **a, float **b, float **c, int size_a, int size_b, int size_c)
 	}
 }
 
-int basic_multiplication(int size_a1, int size_b1, int size_a2, int size_b2, boolean is_print)
+int allocate_matrixes(float ***pa, float ***pb, float ***pc,
+	int size_a1, int size_b1, int size_a2, int size_b2)
 {
 	float **a, **b, **c;
-	int i, j;
+
+	if (allocate_matrix(&a, size_a1, size_b1) != 0) {
+		return -1;
+	}
+	else if (allocate_matrix(&b, size_a2, size_b2) != 0) {
+		free_matrix(a, size_a1);
+		return -1;
+	}
+	else if (allocate_matrix(&c, size_a1, size_b2) != 0) {
+		free_matrix(a, size_a1);
+		free_matrix(b, size_a2);
+		return -1;
+	}
+
+	*pa = a;
+	*pb = b;
+	*pc = c;
+
+	return 0;
+}
+
+void free_matrixes(float **a, float **b, float **c,
+	int size_a1, int size_b1, int size_a2, int size_b2)
+{
+	free_matrix(a, size_a1);
+	free_matrix(b, size_a2);
+	free_matrix(c, size_a1);
+}
+
+int generate_matrix_to_file(char *path, int row, int column)
+{
+	float **mt;
+	int res = 0;
+	if (allocate_matrix(&mt, row, column) != 0)
+		return -1;
+
+	generate_matrix(mt, row, column);
+
+	FILE *output = fopen(path, "w");
+	if (output == NULL) {
+		printf("error during file creation with path = %s\n", path);
+		free_matrix(mt, row);
+		return -1;
+	}
+
+	if (fprintf(output, "%d %d\n", row, column) <= 0) {
+		res = -1;
+		goto cleanup;
+	}
+
+	for (int i = 0; i < row; i++) {
+		for (int j = 0; j < column; j++) {
+			if (fprintf(output, "%f ", mt[i][j]) <= 0) {
+				res = -1;
+				goto cleanup;
+			}
+		}
+		if (fprintf(output, "\n") <= 0) {
+			res = -1;
+			goto cleanup;
+		}
+	}
+
+cleanup:
+	fclose(output);
+	free_matrix(mt, row);
+
+	if (res < 0) {
+		printf("error during output matrix to file\n");
+		remove(path);
+		return -1;
+	}
+
+	return 0;
+}
+
+int multiply_from_file_matrixes(boolean is_print)
+{
+	return 0;
+}
+
+int multiply_generated_matrixes(int size_a1, int size_b1, int size_a2, int size_b2, boolean is_print)
+{
+	float **a, **b, **c;
 
 	if (size_b1 != size_a2) {
 		printf("Incorrect rows/column length\n");
 		return -1;
 	}
 
-	if (allocate_matrix(&a, size_a1, size_b1) != 0) {
+	if (allocate_matrixes(&a, &b, &c, size_a1, size_b1, size_a2, size_b2) != 0)
 		return -1;
-	} else if (allocate_matrix(&b, size_a2, size_b2) != 0) {
-		free_matrix(a, size_a1);
-		return -1;
-	} else if (allocate_matrix(&c, size_a1, size_b2) != 0) {
-		free(a, size_a1);
-		free(b, size_a2);
-		return -1;
-	}
 
 	generate_matrix(a, size_a1, size_b1);
 	generate_matrix(b, size_a2, size_b2);
@@ -113,9 +206,7 @@ int basic_multiplication(int size_a1, int size_b1, int size_a2, int size_b2, boo
 		print_matrix(c, size_a1, size_b2);
 	}
 
-	free_matrix(a, size_a1);
-	free_matrix(b, size_a2);
-	free_matrix(c, size_a1);
+	free_matrixes(a, b, c, size_a1, size_b1, size_a2, size_b2);
 
 	return 0;
 }
@@ -123,10 +214,21 @@ int basic_multiplication(int size_a1, int size_b1, int size_a2, int size_b2, boo
 int main()
 {
 	double start, end;
+	int res;
 	printf("This is a native C program.\n");
 
+	if ((generate_matrix_to_file(PATH_TO_MATRIX_A, 3, 4) != 0) ||
+		generate_matrix_to_file(PATH_TO_MATRIX_B, 4, 5) != 0) {
+		return -1;
+	}
+
 	start = GetTickCount();
-	if (basic_multiplication(SIZE_A1, SIZE_B1, SIZE_A2, SIZE_B2, FALSE) != 0) {
+	if (FROM_FILE) {
+		res = multiply_from_file_matrixes(TRUE);
+	} else {
+		res = multiply_generated_matrixes(SIZE_A1, SIZE_B1, SIZE_A2, SIZE_B2, FALSE, TRUE);
+	}
+	if (res != 0) {
 		printf("Error during multiplication\n");
 		return -1;
 	}
