@@ -8,8 +8,9 @@
 
 #define FROM_FILE TRUE
 
-#define PATH_TO_MATRIX_A "matrix_b.txt"
-#define PATH_TO_MATRIX_B "matrix_a.txt"
+#define PATH_TO_MATRIX_A "matrix_a.txt"
+#define PATH_TO_MATRIX_B "matrix_b.txt"
+#define PATH_TO_MATRIX_C "matrix_c.txt"
 
 #define SIZE_A1 100
 #define SIZE_B1 400
@@ -165,6 +166,42 @@ cleanup:
 	return 0;
 }
 
+int write_matrix_to_file(char *path, float **mt, int row, int column)
+{
+    FILE *output = fopen(path, "w");
+    char error_message[] = "Error occured during writing to file for " \
+                           "saving with path = %s\n";
+    if (output == NULL) {
+        printf("Error occured during creation file for saving " \
+               "with path = %s\n", path);
+        return -1;
+    }
+
+    if (fprintf(output, "%d %d\n", row, column) < 2) {
+        printf(error_message, path);
+        fclose(output);
+        return -1;
+    }
+
+    for (int i = 0; i < row; i++) {
+        for (int j = 0; j < column; j++) {
+            if (fprintf(output, "%f ", mt[i][j]) < 1) {
+                printf(error_message, path);
+                fclose(output);
+                return -1;
+            }
+        }
+        if (fprintf(output, "\n") < 1) {
+            printf(error_message, path);
+            fclose(output);
+            return -1;
+        }
+    }
+
+    fclose(output);
+    return 0;
+}
+
 int read_matrix_from_file(char *path, float ***pmt, int *prow, int *pcolumn)
 {
 	int row, column;
@@ -268,7 +305,7 @@ int main()
 	int res;
 	printf("This is a native C program.\n");
 
-#ifdef 0
+#if 0
 	if ((generate_matrix_to_file(PATH_TO_MATRIX_A, 3, 4) != 0) ||
 		generate_matrix_to_file(PATH_TO_MATRIX_B, 4, 5) != 0) {
 		return -1;
@@ -284,6 +321,11 @@ int main()
 			return -1;
 		}
 		res = multiply_from_file_matrixes(a, b, &c, size_a1, size_b1, size_a2, size_b2, TRUE);
+        if (write_matrix_to_file(PATH_TO_MATRIX_C, c, size_a1, size_b2) != 0) {
+            printf("Troubles with saving result to file\n");
+            free_matrixes(a, b, c, size_a1, size_b1, size_a2, size_b2);
+            return -1;
+        }
 		free_matrixes(a, b, c, size_a1, size_b1, size_a2, size_b2);
 	} else {
 		res = multiply_generated_matrixes(SIZE_A1, SIZE_B1, SIZE_A2, SIZE_B2, FALSE);
