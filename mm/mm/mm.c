@@ -166,6 +166,22 @@ cleanup:
 	return 0;
 }
 
+boolean compare_matrixes(float **a, int a_row, int a_column,
+                         float **b, int b_row, int b_column)
+{
+    if (a_row != b_row || a_column != b_column)
+        return FALSE;
+
+    for (int i = 0; i < a_row; i++) {
+        for (int j = 0; j < a_column; j++) {
+            if (a[i][j] != b[i][j])
+                return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
 int write_matrix_to_file(char *path, float **mt, int row, int column)
 {
     FILE *output = fopen(path, "w");
@@ -321,10 +337,22 @@ int main()
 			return -1;
 		}
 		res = multiply_from_file_matrixes(a, b, &c, size_a1, size_b1, size_a2, size_b2, TRUE);
-        if (write_matrix_to_file(PATH_TO_MATRIX_C, c, size_a1, size_b2) != 0) {
-            printf("Troubles with saving result to file\n");
-            free_matrixes(a, b, c, size_a1, size_b1, size_a2, size_b2);
-            return -1;
+        if (res == 0) {
+            float **correct_matrix;
+            if ((read_matrix_from_file(PATH_TO_MATRIX_C, &correct_matrix, &size_a1, &size_b2) != 0)) {
+                res = -1;
+            } else {
+                if (compare_matrixes(correct_matrix, size_a1, size_b2, c, size_a1, size_b2) != TRUE) {
+                    printf("The matrixes are not equal.\n");
+                } else {
+                    printf("The matrixes are equal.\n");
+                    if (write_matrix_to_file(PATH_TO_MATRIX_C, c, size_a1, size_b2) != 0) {
+                        printf("Troubles with saving result to file\n");
+                        free_matrixes(a, b, c, size_a1, size_b1, size_a2, size_b2);
+                        return -1;
+                    }
+                }
+            }
         }
 		free_matrixes(a, b, c, size_a1, size_b1, size_a2, size_b2);
 	} else {
