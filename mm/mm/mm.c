@@ -6,6 +6,8 @@
 
 #include <Windows.h>
 
+#include "mm.h"
+
 #define FROM_FILE TRUE
 
 #define PATH_TO_MATRIX_A "matrix_a.txt"
@@ -52,8 +54,8 @@ void generate_matrix(float **a, int size_a, int size_b)
 {
     srand((unsigned int)time(NULL));
     for (int i = 0; i < size_a; i++)
-        for (int j = 0; j < size_b; j++)
-            a[i][j] = (rand() % MAX_ELEMENT + 1) / 10.f;
+    for (int j = 0; j < size_b; j++)
+        a[i][j] = (rand() % MAX_ELEMENT + 1) / 10.f;
 }
 
 void print_matrix(float **a, int size_a, int size_b)
@@ -69,16 +71,18 @@ void print_matrix(float **a, int size_a, int size_b)
 
 // MATRIXES
 int allocate_matrixes(float ***pa, float ***pb, float ***pc,
-                      int size_a1, int size_b1, int size_a2, int size_b2)
+    int size_a1, int size_b1, int size_a2, int size_b2)
 {
     float **a, **b, **c;
 
     if (allocate_matrix(&a, size_a1, size_b1) != 0) {
         return -1;
-    } else if (allocate_matrix(&b, size_a2, size_b2) != 0) {
+    }
+    else if (allocate_matrix(&b, size_a2, size_b2) != 0) {
         free_matrix(a, size_a1);
         return -1;
-    } else if (allocate_matrix(&c, size_a1, size_b2) != 0) {
+    }
+    else if (allocate_matrix(&c, size_a1, size_b2) != 0) {
         free_matrix(a, size_a1);
         free_matrix(b, size_a2);
         return -1;
@@ -92,7 +96,7 @@ int allocate_matrixes(float ***pa, float ***pb, float ***pc,
 }
 
 void free_matrixes(float **a, float **b, float **c,
-                   int size_a1, int size_b1, int size_a2, int size_b2)
+    int size_a1, int size_b1, int size_a2, int size_b2)
 {
     free_matrix(a, size_a1);
     free_matrix(b, size_a2);
@@ -100,15 +104,15 @@ void free_matrixes(float **a, float **b, float **c,
 }
 
 boolean compare_matrixes(float **a, int a_row, int a_column,
-                         float **b, int b_row, int b_column)
+    float **b, int b_row, int b_column)
 {
     if (a_row != b_row || a_column != b_column)
         return FALSE;
 
     for (int i = 0; i < a_row; i++)
-        for (int j = 0; j < a_column; j++)
-            if (a[i][j] != b[i][j])
-                return FALSE;
+    for (int j = 0; j < a_column; j++)
+    if (a[i][j] != b[i][j])
+        return FALSE;
 
     return TRUE;
 }
@@ -116,12 +120,12 @@ boolean compare_matrixes(float **a, int a_row, int a_column,
 int write_matrix_to_file(char *path, float **mt, int row, int column)
 {
     char error_message[] = "Error occured during writing to file for " \
-                           "saving with path = %s\n";
+        "saving with path = %s\n";
 
     FILE *output = fopen(path, "w");
     if (output == NULL) {
         printf("Error occured during creation file for saving " \
-               "with path = %s\n", path);
+            "with path = %s\n", path);
         return -1;
     }
 
@@ -229,9 +233,9 @@ int generate_matrix_to_file(char *path, int row, int column)
 }
 
 int basic_multiplication(boolean is_generate, boolean is_print,
-                         boolean is_compare, boolean is_save,
-                         char* a_path, char* b_path, char* c_path, char* e_path,
-                         int size_a1, int size_b1, int size_a2, int size_b2)
+    boolean is_compare, boolean is_save,
+    char* a_path, char* b_path, char* c_path, char* e_path,
+    int size_a1, int size_b1, int size_a2, int size_b2)
 {
     float **a, **b, **c;
 
@@ -240,7 +244,8 @@ int basic_multiplication(boolean is_generate, boolean is_print,
             return -1;
         generate_matrix(a, size_a1, size_b1);
         generate_matrix(b, size_a2, size_b2);
-    } else {
+    }
+    else {
         if ((read_matrix_from_file(a_path, &a, &size_a1, &size_b1) != 0) ||
             (read_matrix_from_file(b_path, &b, &size_a2, &size_b2) != 0)) {
             return -1;
@@ -276,10 +281,12 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         float **correct_matrix;
         if ((read_matrix_from_file(e_path, &correct_matrix, &size_a1, &size_b2) != 0)) {
             printf("Troubles with reading matrix from file to verify correctness.\n");
-        } else {
+        }
+        else {
             if (compare_matrixes(correct_matrix, size_a1, size_b2, c, size_a1, size_b2) != TRUE) {
                 printf("The matrixes are not equal.\n");
-            } else {
+            }
+            else {
                 printf("The matrixes are equal.\n");
             }
         }
@@ -289,6 +296,8 @@ int basic_multiplication(boolean is_generate, boolean is_print,
 
     return 0;
 }
+
+//#include "kernel.cu"
 
 int main()
 {
@@ -304,14 +313,16 @@ int main()
 
     start = GetTickCount();
     if (basic_multiplication(FALSE, TRUE, TRUE, FALSE,
-            PATH_TO_MATRIX_A, PATH_TO_MATRIX_B, PATH_TO_MATRIX_C, PATH_TO_MATRIX_C,
-            SIZE_A1, SIZE_B1, SIZE_A2, SIZE_B2) != 0) {
+        PATH_TO_MATRIX_A, PATH_TO_MATRIX_B, PATH_TO_MATRIX_C, PATH_TO_MATRIX_C,
+        SIZE_A1, SIZE_B1, SIZE_A2, SIZE_B2) != 0) {
         printf("Error during multiplication.\n");
+        system("pause");
         return -1;
-	}
+    }
     end = GetTickCount();
     printf("Time of valuation: %f ms\n", end - start);
 
+    int k = cuda_main();
     system("pause");
     return 0;
 }
