@@ -3,10 +3,23 @@
 #include "mm.h"
 
 #define FROM_FILE TRUE
-
-#define PATH_TO_MATRIX_A "matrix_a.txt"
-#define PATH_TO_MATRIX_B "matrix_b.txt"
-#define PATH_TO_MATRIX_C "matrix_c.txt"
+#if 0
+#define PATH_TO_MATRIX_A "matrix_a_256.txt"
+#define PATH_TO_MATRIX_B "matrix_b_256.txt"
+#define PATH_TO_MATRIX_C "matrix_c_256.txt"
+#elif 1
+#define PATH_TO_MATRIX_A "matrix_a_1280.txt"
+#define PATH_TO_MATRIX_B "matrix_b_1280.txt"
+#define PATH_TO_MATRIX_C "matrix_c_1280.txt"
+#elif 0
+#define PATH_TO_MATRIX_A "matrix_a_2560.txt"
+#define PATH_TO_MATRIX_B "matrix_b_2560.txt"
+#define PATH_TO_MATRIX_C "matrix_c_2560.txt"
+#elif 0
+#define PATH_TO_MATRIX_A "matrix_a_10000.txt"
+#define PATH_TO_MATRIX_B "matrix_b_10000.txt"
+#define PATH_TO_MATRIX_C "matrix_c_10000.txt"
+#endif
 
 #define SIZE_A1 100
 #define SIZE_B1 400
@@ -227,7 +240,7 @@ int generate_matrix_to_file(char *path, int row, int column)
 }
 
 int basic_multiplication(boolean is_generate, boolean is_print,
-    boolean is_compare, boolean is_save,
+    boolean is_compare, boolean is_save, boolean is_cuda,
     char* a_path, char* b_path, char* c_path, char* e_path,
     int size_a1, int size_b1, int size_a2, int size_b2)
 {
@@ -238,8 +251,8 @@ int basic_multiplication(boolean is_generate, boolean is_print,
             return -1;
         generate_matrix(a, size_a1, size_b1);
         generate_matrix(b, size_a2, size_b2);
-    }
-    else {
+        printf("Matrixes are generated.\n");
+    } else {
         if ((read_matrix_from_file(a_path, &a, &size_a1, &size_b1) != 0) ||
             (read_matrix_from_file(b_path, &b, &size_a2, &size_b2) != 0)) {
             return -1;
@@ -248,6 +261,7 @@ int basic_multiplication(boolean is_generate, boolean is_print,
             free_matrixes(a, b, c, size_a1, size_b1, size_a2, size_b2);
             return -1;
         }
+        printf("Matrixes are readed.\n");
     }
 
     if (size_b1 != size_a2) {
@@ -256,9 +270,17 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         return -1;
     }
 
-    mm(a, b, c, size_a1, size_b1, size_b2);
+    if (is_cuda) {
+        if (cuda_mm(a, b, c, size_a1) != 0) {
+            printf("Troubles with CUDA multiplication.\n");
+            return -1;
+        }
+    } else {
+        mm(a, b, c, size_a1, size_b1, size_b2);
+    }
 
     if (is_save) {
+        printf("Start saving to file procedure.\n");
         if (write_matrix_to_file(c_path, c, size_a1, size_b2) != 0) {
             printf("Troubles with saving result to file.\n");
             return -1;
@@ -272,15 +294,14 @@ int basic_multiplication(boolean is_generate, boolean is_print,
     }
 
     if (is_compare) {
+        printf("Start comparing the result with etalon.\n");
         float **correct_matrix;
         if ((read_matrix_from_file(e_path, &correct_matrix, &size_a1, &size_b2) != 0)) {
             printf("Troubles with reading matrix from file to verify correctness.\n");
-        }
-        else {
+        } else {
             if (compare_matrixes(correct_matrix, size_a1, size_b2, c, size_a1, size_b2) != TRUE) {
                 printf("The matrixes are not equal.\n");
-            }
-            else {
+            } else {
                 printf("The matrixes are equal.\n");
             }
         }
@@ -291,22 +312,20 @@ int basic_multiplication(boolean is_generate, boolean is_print,
     return 0;
 }
 
-//#include "kernel.cu"
-
 int main()
 {
     double start, end;
     printf("This is a native C program.\n");
 
 #if 0
-    if ((generate_matrix_to_file(PATH_TO_MATRIX_A, 3, 4) != 0) ||
-        generate_matrix_to_file(PATH_TO_MATRIX_B, 4, 5) != 0) {
+    if ((generate_matrix_to_file(PATH_TO_MATRIX_A, 1280, 1280) != 0) ||
+        generate_matrix_to_file(PATH_TO_MATRIX_B, 1280, 1280) != 0) {
         return -1;
     }
 #endif
 
     start = GetTickCount();
-    if (basic_multiplication(FALSE, FALSE, TRUE, TRUE,
+    if (basic_multiplication(FALSE, FALSE, TRUE, FALSE, FALSE,
         PATH_TO_MATRIX_A, PATH_TO_MATRIX_B, PATH_TO_MATRIX_C, PATH_TO_MATRIX_C,
         SIZE_A1, SIZE_B1, SIZE_A2, SIZE_B2) != 0) {
         printf("Error during multiplication.\n");
@@ -316,8 +335,6 @@ int main()
     end = GetTickCount();
     printf("Time of valuation: %f ms\n", end - start);
 
-    int k = cuda_main();
-    int l = cuda_get_and_print_info();
     system("pause");
     return 0;
 }
