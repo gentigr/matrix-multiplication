@@ -1,11 +1,5 @@
 #define _CRT_SECURE_NO_DEPRECATE
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-#include <Windows.h>
-
 #include "mm.h"
 
 #define FROM_FILE TRUE
@@ -312,7 +306,7 @@ int main()
 #endif
 
     start = GetTickCount();
-    if (basic_multiplication(FALSE, TRUE, TRUE, FALSE,
+    if (basic_multiplication(FALSE, FALSE, TRUE, TRUE,
         PATH_TO_MATRIX_A, PATH_TO_MATRIX_B, PATH_TO_MATRIX_C, PATH_TO_MATRIX_C,
         SIZE_A1, SIZE_B1, SIZE_A2, SIZE_B2) != 0) {
         printf("Error during multiplication.\n");
@@ -323,6 +317,7 @@ int main()
     printf("Time of valuation: %f ms\n", end - start);
 
     int k = cuda_main();
+    int l = cuda_get_and_print_info();
     system("pause");
     return 0;
 }

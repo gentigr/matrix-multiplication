@@ -122,3 +122,81 @@ Error:
 
     return cudaStatus;
 }
+
+void cuda_clear_info(cudaDeviceProp *cdp)
+{
+    free(cdp);
+}
+
+int cuda_get_info(int *pDeviceCount, cudaDeviceProp **pDeviceProp)
+{
+    int deviceCount;
+    cudaGetDeviceCount(&deviceCount);
+    cudaDeviceProp *cdp = (cudaDeviceProp *)malloc(deviceCount * sizeof(cudaDeviceProp));
+    if (cdp == NULL) {
+        printf("There is not enough memory for getting device information.\n");
+        return -1;
+    }
+
+    for (int i = 0; i < deviceCount; i++)
+        cudaGetDeviceProperties(&cdp[i], i);
+
+    *pDeviceCount = deviceCount;
+    *pDeviceProp = cdp;
+
+    return 0;
+}
+
+int cuda_print_info(int deviceCount, cudaDeviceProp *deviceProp)
+{
+    printf("Device count: %d\n\n", deviceCount);
+
+    for (int i = 0; i < deviceCount; i++)
+    {
+        printf("Device name: %s\n", deviceProp[i].name);
+        printf("Total global memory: %Iu\n", deviceProp[i].totalGlobalMem);
+        printf("Shared memory per block: %Iu\n", deviceProp[i].sharedMemPerBlock);
+        printf("Registers per block: %d\n", deviceProp[i].regsPerBlock);
+        printf("Warp size: %d\n", deviceProp[i].warpSize);
+        printf("Memory pitch: %Iu\n", deviceProp[i].memPitch);
+        printf("Max threads per block: %d\n", deviceProp[i].maxThreadsPerBlock);
+
+        printf("Max threads dimensions: x = %d, y = %d, z = %d\n",
+            deviceProp[i].maxThreadsDim[0],
+            deviceProp[i].maxThreadsDim[1],
+            deviceProp[i].maxThreadsDim[2]);
+
+        printf("Max grid size: x = %d, y = %d, z = %d\n",
+            deviceProp[i].maxGridSize[0],
+            deviceProp[i].maxGridSize[1],
+            deviceProp[i].maxGridSize[2]);
+
+        printf("Clock rate: %d\n", deviceProp[i].clockRate);
+        printf("Total constant memory: %Iu\n", deviceProp[i].totalConstMem);
+        printf("Compute capability: %d.%d\n", deviceProp[i].major, deviceProp[i].minor);
+        printf("Texture alignment: %d\n", deviceProp[i].textureAlignment);
+        printf("Device overlap: %d\n", deviceProp[i].deviceOverlap);
+        printf("Multiprocessor count: %d\n", deviceProp[i].multiProcessorCount);
+
+        printf("Kernel execution timeout enabled: %s\n",
+            deviceProp[i].kernelExecTimeoutEnabled ? "true" : "false");
+    }
+
+    return 0;
+}
+
+int cuda_get_and_print_info()
+{
+    int device_count;
+    cudaDeviceProp *cdp;
+
+    if (cuda_get_info(&device_count, &cdp) != 0)
+        return -1;
+
+    if (cuda_print_info(device_count, cdp) != 0)
+        return -1;
+
+    cuda_clear_info(cdp);
+
+    return 0;
+}
