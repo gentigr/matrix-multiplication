@@ -258,17 +258,17 @@ int cuda_mm(float **pa, float **pb, float **pc, unsigned int size)
 {
     float *a, *b, *c;
 
-    //TODO: Memory leaks
+    //TODO: Memory leaks in case of error.
     if ((convert_two_to_one_dimension(size, pa, &a) != 0) ||
         (convert_two_to_one_dimension(size, pb, &b) != 0) ||
         (convert_two_to_one_dimension(size, pc, &c) != 0)) {
         return -1;
     }
 
-    // Add vectors in parallel.
+    // Multiply matrixes in parallel.
     cudaError_t cudaStatus = mmWithCuda(0, c, a, b, size);
     if (cudaStatus != cudaSuccess) {
-        printf("mmWithCuda failed!");
+        printf("mmWithCuda failed!\n");
         return 1;
     }
 
@@ -377,6 +377,123 @@ cudaError_t mmWithCuda(int device, float *c, const float *a, const float *b, uns
     if (cudaStatus != cudaSuccess) {
         printf("cudaMemcpy failed!");
     }
+
+    cudaFree(adev);
+    cudaFree(bdev);
+    cudaFree(cdev);
+
+    return cudaStatus;
+}
+
+cudaError_t mmWithCudaInStreams(int device, float *c, const float *a, const float *b, unsigned int size)
+{
+    float *adev, *bdev, *cdev;
+    float *apinned, *bpinned, *cpinned;
+    dim3 threads(BLOCK_SIZE, BLOCK_SIZE);
+    dim3 blocks((size / STREAM_COUNT) / threads.x, (size / STREAM_COUNT) / threads.y);
+    int allocate_on_gpu = (size / STREAM_COUNT) * (size / STREAM_COUNT) * sizeof(float);
+    cudaError_t cudaStatus;
+
+    // Choose which GPU to run on, change this on a multi-GPU system
+    cudaStatus = cudaSetDevice(device);
+    if (cudaStatus != cudaSuccess) {
+        printf("cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
+        return cudaStatus;
+    }
+
+
+    cudaStream_t streams[3];
+    for (int i = 0; i < 3; i++) {
+        //TODO: Error handling
+        cudaStreamCreate(&streams[STREAM_COUNT]);
+    }
+
+    // Allocate GPU buffers for three matrixes
+    cudaStatus = cudaMalloc((void**)&adev, allocate_on_gpu);
+    cudaStatus = cudaMallocHost((void**)&apinned, allocate_on_gpu);
+    if (cudaStatus != cudaSuccess) {
+        printf("cudaMalloc failed!");
+        return cudaStatus;
+    }
+
+    cudaStatus = cudaMalloc((void**)&bdev, allocate_on_gpu);
+    cudaStatus = cudaMallocHost((void**)&bpinned, allocate_on_gpu);
+    if (cudaStatus != cudaSuccess) {
+        printf("cudaMalloc failed!");
+        cudaFree(adev);
+        return cudaStatus;
+    }
+
+    cudaStatus = cudaMallocHost((void**)&cpinned, allocate_on_gpu);
+    cudaStatus = cudaMalloc((void**)&cdev, allocate_on_gpu);
+    if (cudaStatus != cudaSuccess) {
+        printf("cudaMalloc failed!");
+        cudaFree(adev);
+        cudaFree(bdev);
+        return cudaStatus;
+    }
+
+    for (int i = 0; i < STREAM_COUNT; i++) {
+
+        memcpy(apinned, &a[i * (size / STREAM_COUNT)], allocate_on_gpu);
+        memcpy(bpinned, &b[i * (size / STREAM_COUNT)], allocate_on_gpu);
+        memcpy(cpinned, &c[i * (size / STREAM_COUNT)], allocate_on_gpu);
+
+        
+        // Copy input matrixes from host memory to GPU buffers.
+        cudaStatus = cudaMemcpy(adev, a, allocate_on_gpu, cudaMemcpyHostToDevice);
+        if (cudaStatus != cudaSuccess) {
+            printf("cudaMemcpy failed!");
+            cudaFree(adev);
+            cudaFree(bdev);
+            cudaFree(cdev);
+            return cudaStatus;
+        }
+
+        cudaStatus = cudaMemcpy(bdev, b, allocate_on_gpu, cudaMemcpyHostToDevice);
+        if (cudaStatus != cudaSuccess) {
+            printf("cudaMemcpy failed!");
+            cudaFree(adev);
+            cudaFree(bdev);
+            cudaFree(cdev);
+            return cudaStatus;
+        }
+
+        // Launch a kernel on the GPU
+        mmKernel << <blocks, threads >> > (adev, bdev, size, cdev);
+        cudaThreadSynchronize();
+
+        // Check for any errors launching the kernel
+        cudaStatus = cudaGetLastError();
+        if (cudaStatus != cudaSuccess) {
+            printf("mmKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+            cudaFree(adev);
+            cudaFree(bdev);
+            cudaFree(cdev);
+            return cudaStatus;
+        }
+
+        // cudaDeviceSynchronize waits for the kernel to finish, and returns
+        // any errors encountered during the launch.
+        cudaStatus = cudaDeviceSynchronize();
+        if (cudaStatus != cudaSuccess) {
+            printf("cudaDeviceSynchronize returned error code %d after launching mmKernel!\n", cudaStatus);
+            cudaFree(adev);
+            cudaFree(bdev);
+            cudaFree(cdev);
+            return cudaStatus;
+        }
+
+        // Copy output matrix from GPU buffer to host memory
+        cudaStatus = cudaMemcpy(c, cdev, allocate_on_gpu, cudaMemcpyDeviceToHost);
+        if (cudaStatus != cudaSuccess) {
+            printf("cudaMemcpy failed!");
+        }
+    }
+
+    cudaFreeHost(apinned);
+    cudaFreeHost(bpinned);
+    cudaFreeHost(cpinned);
 
     cudaFree(adev);
     cudaFree(bdev);
