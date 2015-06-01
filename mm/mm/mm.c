@@ -99,7 +99,7 @@ boolean compare_matrixes(FLOAT **a, int a_row, int a_column,
     if (a_row != b_row || a_column != b_column)
         return FALSE;
     
-    int comp = 12;
+    int comp = 10;
     for (int i = 0; i < a_row; i++)
     for (int j = 0; j < a_column; j++)
     if (!(((a[i][j] + comp) > b[i][j]) && ((a[i][j] - comp) < b[i][j])))
@@ -242,13 +242,11 @@ int get_one_dimension_matrix(int posX, int posY, int size, FLOAT **in, FLOAT **o
     return 0;
 }
 
-int convert_one_to_two_dimension_with(int size, FLOAT *in, FLOAT **out)
+void convert_one_to_two_dimension_with(int size, FLOAT *in, FLOAT **out)
 {
     for (int i = 0; i < size; i++)
     for (int j = 0; j < size; j++)
         out[i][j] = in[i*size + j];
-
-    return 0;
 }
 
 void sum(FLOAT **from, FLOAT **to, int size)
@@ -256,6 +254,13 @@ void sum(FLOAT **from, FLOAT **to, int size)
     for (int i = 0; i < size; i++)
     for (int j = 0; j < size; j++)
         to[i][j] += from[i][j];
+}
+
+void tozerator(FLOAT **mt, int size)
+{
+    for (int i = 0; i < size; i++)
+    for (int j = 0; j < size; j++)
+        mt[i][j] = 0;
 }
 
 int basic_multiplication(boolean is_generate, boolean is_print,
@@ -296,7 +301,7 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         }
     } else if (0) {
         mm(a, b, c, size_a1, size_b1, size_b2);
-    } else if (1) {
+    } else if (0) {
         int size = 2;
         FLOAT *pa[4], *pb[4], *pc[4];
         if ((get_one_dimension_matrix(0, 0, size_a1 / 2, a, &pa[0]) != 0) ||
@@ -361,6 +366,211 @@ int basic_multiplication(boolean is_generate, boolean is_print,
                 c[i][j] = (j < line) ? cc[0][i][j] : cc[1][i][j - line];
             } else {
                 c[i][j] = (j < line) ? cc[2][i - line][j] : cc[3][i - line][j - line];
+            }
+        }
+    } else if (1) {
+        int side = 640;
+//        int matrix_count = (size_a1 / side) * (size_a1 / side);
+        int matrix_on_side = (size_a1 / side);
+        int matrix_count = matrix_on_side * matrix_on_side;
+
+        FLOAT **pa, **pb, **pc;
+        pa = (FLOAT **)calloc(matrix_count, sizeof(FLOAT*));
+        pb = (FLOAT **)calloc(matrix_count, sizeof(FLOAT*));
+        pc = (FLOAT **)calloc(matrix_count, sizeof(FLOAT*));
+        if (pa == NULL || pb == NULL || pc == NULL) {
+            //TODO: Memory leaks in this case
+            printf("There is not enough memory.\n");
+            return -1;
+        }
+
+        int matrix_number = 0;
+        for (int i = 0; i < matrix_on_side; i++) {
+            for (int j = 0; j < matrix_on_side; j++) {
+                if ((get_one_dimension_matrix(i, j, side, a, &pa[matrix_number]) != 0) ||
+                    (get_one_dimension_matrix(i, j, side, b, &pb[matrix_number++]) != 0)) {
+                    //TODO: Memory leaks in case of error
+                    printf("Error during conversation.\n");
+                    return -1;
+                }
+            }
+        }
+
+//        const int line = 640;// size_a1 / 2;
+//        FLOAT **ca[4], **cb[4], **cc[4];
+
+////////////////////////////////////////////////////////////////////////
+        FLOAT ***ca, ***cb, ***cc;
+        ca = (FLOAT ***)calloc(matrix_count, sizeof(FLOAT**));
+        cb = (FLOAT ***)calloc(matrix_count, sizeof(FLOAT**));
+        cc = (FLOAT ***)calloc(matrix_count, sizeof(FLOAT**));
+        if (ca == NULL || cb == NULL || cc == NULL) {
+            printf("Cannot allocate memory for matrixes.\n");
+            return -1;
+        }
+
+        for (int i = 0; i < matrix_count; i++) {
+            if ((allocate_matrix(&ca[i], side, side) != 0) ||
+                (allocate_matrix(&cb[i], side, side) != 0) || 
+                (allocate_matrix(&cc[i], side, side) != 0)) {
+                //TODO: Memory leaks
+                printf("Cannot allocate 2D matrixes.\n");
+                return -1;
+            }
+        }
+
+
+        FLOAT ****cca = (FLOAT****)calloc(2, sizeof(FLOAT***));
+        if (cca == NULL)
+            return -1;
+        for (int i = 0; i < 2; i++) {
+            cca[i] = (FLOAT***)calloc(2, sizeof(FLOAT**));
+            if (cca[i] == NULL)
+                return -1;
+        }
+        cca[0][0] = ca[0];
+        cca[0][1] = ca[1];
+        cca[1][0] = ca[2];
+        cca[1][1] = ca[3];
+
+        FLOAT ****ccb = (FLOAT****)calloc(2, sizeof(FLOAT***));
+        if (ccb == NULL)
+            return -1;
+        for (int i = 0; i < 2; i++) {
+            ccb[i] = (FLOAT***)calloc(2, sizeof(FLOAT**));
+            if (ccb[i] == NULL)
+                return -1;
+        }
+        ccb[0][0] = cb[0];
+        ccb[0][1] = cb[1];
+        ccb[1][0] = cb[2];
+        ccb[1][1] = cb[3];
+
+        /*
+        allocate_matrix(&ca[0], line, line);        allocate_matrix(&cb[0], line, line);        allocate_matrix(&cc[0], line, line);
+        allocate_matrix(&ca[1], line, line);        allocate_matrix(&cb[1], line, line);        allocate_matrix(&cc[1], line, line);
+        allocate_matrix(&ca[2], line, line);        allocate_matrix(&cb[2], line, line);        allocate_matrix(&cc[2], line, line);
+        allocate_matrix(&ca[3], line, line);        allocate_matrix(&cb[3], line, line);        allocate_matrix(&cc[3], line, line);
+        */
+        //FLOAT ca[4][640][640] = { 0 };// , ca1[640][640], ca2[640][640], ca3[640][640];
+        //FLOAT cb[4][640][640] = { 0 };// , cb1[640][640], cb2[640][640], cb3[640][640];
+        //FLOAT cc[4][640][640] = { 0 };// , cc1[640][640], cc2[640][640], cc3[640][640];
+ 
+        for (int i = 0; i < matrix_count; i++) {
+            convert_one_to_two_dimension_with(side, pa[i], ca[i]);
+            convert_one_to_two_dimension_with(side, pb[i], cb[i]);
+        }
+        /*
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[0], ca[0]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[1], ca[1]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[2], ca[2]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[3], ca[3]);
+
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[0], cb[0]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[1], cb[1]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[2], cb[2]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[3], cb[3]);
+        */
+        int line = side;
+//        FLOAT **tmp[8];
+//        for (int i = 0; i < 8; i++)
+//            allocate_matrix(&tmp[i], line, line);
+        //        FLOAT tmp0[640][640], tmp1[640][640], tmp2[640][640], tmp3[640][640], tmp4[640][640], tmp5[640][640], tmp6[640][640], tmp7[640][640];
+        
+        
+        FLOAT ****ccc = (FLOAT****)calloc(2, sizeof(FLOAT***));
+        if (ccc == NULL)
+            return -1;
+        for (int i = 0; i < 2; i++) {
+            ccc[i] = (FLOAT***)calloc(2, sizeof(FLOAT**));
+            if (ccc[i] == NULL)
+                return -1;
+        }
+        ccc[0][0] = cc[0];
+        ccc[0][1] = cc[1];
+        ccc[1][0] = cc[2];
+        ccc[1][1] = cc[3];
+
+
+//        FLOAT sum = 0;
+/*        FLOAT **tt = (FLOAT**)calloc(side, sizeof(FLOAT*));
+        if (tt == NULL)
+            return -1;
+        for (int i = 0; i < side; i++) {
+            tt[i] = (FLOAT*)calloc(side, sizeof(FLOAT));
+            if (tt[i] == NULL)
+                return -1;
+        }
+  */
+        FLOAT **tt;
+        if (allocate_matrix(&tt, side, side) != 0) {
+            //TODO: Memory leaks
+            return -1;
+        }
+
+        for (int i = 0; i < matrix_on_side; i++) {
+            for (int j = 0; j < matrix_on_side; j++) {
+                for (int k = 0; k < matrix_on_side; k++) {
+                    mm(cca[i][k], ccb[k][j], tt, side, side, side);
+                    sum(tt, ccc[i][j], side);
+                    tozerator(tt, side);
+                    //sum = sum + ca[i][k] * cb[k][j];
+                }
+                //tozerator(ccc[i][j], side);
+                //sum(tt, ccc[i][j], side);// = sum;
+                //tozerator(tt, side);// sum = 0;
+            }
+        }
+        
+        /*
+        mm(ca[0], cb[0], tmp[0], line, line, line);
+        mm(ca[1], cb[2], tmp[1], line, line, line);
+        mm(ca[0], cb[1], tmp[2], line, line, line);
+        mm(ca[1], cb[3], tmp[3], line, line, line);
+        mm(ca[2], cb[0], tmp[4], line, line, line);
+        mm(ca[3], cb[2], tmp[5], line, line, line);
+        mm(ca[2], cb[1], tmp[6], line, line, line);
+        mm(ca[3], cb[3], tmp[7], line, line, line);
+
+        sum(tmp[0], ccc[0][0], line);
+        sum(tmp[2], ccc[0][1], line);
+        sum(tmp[4], ccc[1][0], line);
+        sum(tmp[6], ccc[1][1], line);
+
+        sum(tmp[1], ccc[0][0], line);
+        sum(tmp[3], ccc[0][1], line);
+        sum(tmp[5], ccc[1][0], line);
+        sum(tmp[7], ccc[1][1], line);
+        */
+        /*
+        sum(tmp[0], cc[0], line);
+        sum(tmp[2], cc[1], line);
+        sum(tmp[4], cc[2], line);
+        sum(tmp[6], cc[3], line);
+
+        sum(tmp[1], cc[0], line);
+        sum(tmp[3], cc[1], line);
+        sum(tmp[5], cc[2], line);
+        sum(tmp[7], cc[3], line);
+        
+        for (int i = 0; i < line * 2; i++)
+        for (int j = 0; j < line * 2; j++) {
+            if (i < line) {
+                c[i][j] = (j < line) ? cc[0][i][j] : cc[1][i][j - line];
+            }
+            else {
+                c[i][j] = (j < line) ? cc[2][i - line][j] : cc[3][i - line][j - line];
+            }
+        }*/
+
+
+        for (int i = 0; i < line * 2; i++)
+        for (int j = 0; j < line * 2; j++) {
+            if (i < line) {
+                c[i][j] = (j < line) ? ccc[0][0][i][j] : ccc[0][1][i][j - line];
+            }
+            else {
+                c[i][j] = (j < line) ? ccc[1][0][i - line][j] : ccc[1][1][i - line][j - line];
             }
         }
     } else {
