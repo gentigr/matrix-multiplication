@@ -301,74 +301,7 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         }
     } else if (0) {
         mm(a, b, c, size_a1, size_b1, size_b2);
-    } else if (0) {
-        int size = 2;
-        FLOAT *pa[4], *pb[4], *pc[4];
-        if ((get_one_dimension_matrix(0, 0, size_a1 / 2, a, &pa[0]) != 0) ||
-            (get_one_dimension_matrix(0, 1, size_a1 / 2, a, &pa[1]) != 0) ||
-            (get_one_dimension_matrix(1, 0, size_a1 / 2, a, &pa[2]) != 0) ||
-            (get_one_dimension_matrix(1, 1, size_a1 / 2, a, &pa[3]) != 0)) {
-            printf("A convertion failed\n");
-        }
-        if ((get_one_dimension_matrix(0, 0, size_a1 / 2, b, &pb[0]) != 0) ||
-            (get_one_dimension_matrix(0, 1, size_a1 / 2, b, &pb[1]) != 0) ||
-            (get_one_dimension_matrix(1, 0, size_a1 / 2, b, &pb[2]) != 0) ||
-            (get_one_dimension_matrix(1, 1, size_a1 / 2, b, &pb[3]) != 0)) {
-            printf("B convertion failed\n");
-        }
-        const int line = 640;// size_a1 / 2;
-        FLOAT **ca[4], **cb[4], **cc[4];
-        allocate_matrix(&ca[0], line, line);        allocate_matrix(&cb[0], line, line);        allocate_matrix(&cc[0], line, line);
-        allocate_matrix(&ca[1], line, line);        allocate_matrix(&cb[1], line, line);        allocate_matrix(&cc[1], line, line);
-        allocate_matrix(&ca[2], line, line);        allocate_matrix(&cb[2], line, line);        allocate_matrix(&cc[2], line, line);
-        allocate_matrix(&ca[3], line, line);        allocate_matrix(&cb[3], line, line);        allocate_matrix(&cc[3], line, line);
-
-        //FLOAT ca[4][640][640] = { 0 };// , ca1[640][640], ca2[640][640], ca3[640][640];
-        //FLOAT cb[4][640][640] = { 0 };// , cb1[640][640], cb2[640][640], cb3[640][640];
-        //FLOAT cc[4][640][640] = { 0 };// , cc1[640][640], cc2[640][640], cc3[640][640];
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[0], ca[0]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[1], ca[1]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[2], ca[2]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[3], ca[3]);
-
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[0], cb[0]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[1], cb[1]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[2], cb[2]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[3], cb[3]);
-
-        FLOAT **tmp[8];
-        for (int i = 0; i < 8; i++)
-            allocate_matrix(&tmp[i], line, line);
-//        FLOAT tmp0[640][640], tmp1[640][640], tmp2[640][640], tmp3[640][640], tmp4[640][640], tmp5[640][640], tmp6[640][640], tmp7[640][640];
-
-        mm(ca[0], cb[0], tmp[0], line, line, line);
-        mm(ca[1], cb[2], tmp[1], line, line, line);
-        mm(ca[0], cb[1], tmp[2], line, line, line);
-        mm(ca[1], cb[3], tmp[3], line, line, line);
-        mm(ca[2], cb[0], tmp[4], line, line, line);
-        mm(ca[3], cb[2], tmp[5], line, line, line);
-        mm(ca[2], cb[1], tmp[6], line, line, line);
-        mm(ca[3], cb[3], tmp[7], line, line, line);
-
-        sum(tmp[0], cc[0], line);
-        sum(tmp[2], cc[1], line);
-        sum(tmp[4], cc[2], line);
-        sum(tmp[6], cc[3], line);
-
-        sum(tmp[1], cc[0], line);
-        sum(tmp[3], cc[1], line);
-        sum(tmp[5], cc[2], line);
-        sum(tmp[7], cc[3], line);
-
-        for (int i = 0; i < line * 2; i++)
-        for (int j = 0; j < line * 2; j++) {
-            if (i < line) {
-                c[i][j] = (j < line) ? cc[0][i][j] : cc[1][i][j - line];
-            } else {
-                c[i][j] = (j < line) ? cc[2][i - line][j] : cc[3][i - line][j - line];
-            }
-        }
-    } else if (1) {
+    } else {
         int side = 640;
         int matrix_on_side = (size_a1 / side);
         int matrix_count = matrix_on_side * matrix_on_side;
@@ -454,73 +387,6 @@ int basic_multiplication(boolean is_generate, boolean is_print,
             }
             else {
                 c[i][j] = (j < side) ? ccc[1][0][i - side][j] : ccc[1][1][i - side][j - side];
-            }
-        }
-    } else {
-        int size = 2;
-        FLOAT *pa[4], *pb[4], *pc[4];
-        if ((get_one_dimension_matrix(0, 0, size_a1 / 2, a, &pa[0]) != 0) ||
-            (get_one_dimension_matrix(0, 1, size_a1 / 2, a, &pa[1]) != 0) ||
-            (get_one_dimension_matrix(1, 0, size_a1 / 2, a, &pa[2]) != 0) ||
-            (get_one_dimension_matrix(1, 1, size_a1 / 2, a, &pa[3]) != 0)) {
-            printf("A convertion failed\n");
-        }
-        if ((get_one_dimension_matrix(0, 0, size_a1 / 2, b, &pb[0]) != 0) ||
-            (get_one_dimension_matrix(0, 1, size_a1 / 2, b, &pb[1]) != 0) ||
-            (get_one_dimension_matrix(1, 0, size_a1 / 2, b, &pb[2]) != 0) ||
-            (get_one_dimension_matrix(1, 1, size_a1 / 2, b, &pb[3]) != 0)) {
-            printf("B convertion failed\n");
-        }
-        const int line = 2;// 640;// size_a1 / 2;
-        FLOAT **ca[4], **cb[4], **cc[4];
-        allocate_matrix(&ca[0], line, line);        allocate_matrix(&cb[0], line, line);        allocate_matrix(&cc[0], line, line);
-        allocate_matrix(&ca[1], line, line);        allocate_matrix(&cb[1], line, line);        allocate_matrix(&cc[1], line, line);
-        allocate_matrix(&ca[2], line, line);        allocate_matrix(&cb[2], line, line);        allocate_matrix(&cc[2], line, line);
-        allocate_matrix(&ca[3], line, line);        allocate_matrix(&cb[3], line, line);        allocate_matrix(&cc[3], line, line);
-
-        //FLOAT ca[4][640][640] = { 0 };// , ca1[640][640], ca2[640][640], ca3[640][640];
-        //FLOAT cb[4][640][640] = { 0 };// , cb1[640][640], cb2[640][640], cb3[640][640];
-        //FLOAT cc[4][640][640] = { 0 };// , cc1[640][640], cc2[640][640], cc3[640][640];
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[0], ca[0]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[1], ca[1]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[2], ca[2]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[3], ca[3]);
-
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[0], cb[0]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[1], cb[1]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[2], cb[2]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[3], cb[3]);
-
-        FLOAT **tmp[8];
-        for (int i = 0; i < 8; i++)
-            allocate_matrix(&tmp[i], line, line);
-        //        FLOAT tmp0[640][640], tmp1[640][640], tmp2[640][640], tmp3[640][640], tmp4[640][640], tmp5[640][640], tmp6[640][640], tmp7[640][640];
-
-        mm(ca[0], cb[0], tmp[0], line, line, line);
-        mm(ca[1], cb[2], tmp[1], line, line, line);
-        mm(ca[0], cb[1], tmp[2], line, line, line);
-        mm(ca[1], cb[3], tmp[3], line, line, line);
-        mm(ca[2], cb[0], tmp[4], line, line, line);
-        mm(ca[3], cb[2], tmp[5], line, line, line);
-        mm(ca[2], cb[1], tmp[6], line, line, line);
-        mm(ca[3], cb[3], tmp[7], line, line, line);
-
-        sum(tmp[0], cc[0], line);
-        sum(tmp[2], cc[1], line);
-        sum(tmp[4], cc[2], line);
-        sum(tmp[6], cc[3], line);
-
-        sum(tmp[1], cc[0], line);
-        sum(tmp[3], cc[1], line);
-        sum(tmp[5], cc[2], line);
-        sum(tmp[7], cc[3], line);
-
-        for (int i = 0; i < line * 2; i++)
-        for (int j = 0; j < line * 2; j++) {
-            if (i < line) {
-                c[i][j] = (j < line) ? cc[0][i][j] : cc[1][i][j - line];
-            } else {
-                c[i][j] = (j < line) ? cc[2][i - line][j] : cc[3][i - line][j - line];
             }
         }
     }
