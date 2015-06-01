@@ -3,23 +3,6 @@
 #include "mm.h"
 
 #define FROM_FILE TRUE
-#if 0
-#define PATH_TO_MATRIX_A "matrix_a_256.txt"
-#define PATH_TO_MATRIX_B "matrix_b_256.txt"
-#define PATH_TO_MATRIX_C "matrix_c_256.txt"
-#elif 1
-#define PATH_TO_MATRIX_A "matrix_a_1280.txt"
-#define PATH_TO_MATRIX_B "matrix_b_1280.txt"
-#define PATH_TO_MATRIX_C "matrix_c_1280.txt"
-#elif 0
-#define PATH_TO_MATRIX_A "matrix_a_2560.txt"
-#define PATH_TO_MATRIX_B "matrix_b_2560.txt"
-#define PATH_TO_MATRIX_C "matrix_c_2560.txt"
-#elif 0
-#define PATH_TO_MATRIX_A "matrix_a_10000.txt"
-#define PATH_TO_MATRIX_B "matrix_b_10000.txt"
-#define PATH_TO_MATRIX_C "matrix_c_10000.txt"
-#endif
 
 #define SIZE_A1 100
 #define SIZE_B1 400
@@ -31,14 +14,14 @@
 // MATRIX
 int allocate_matrix(float ***mt, int size_a, int size_b)
 {
-    float **a = (float**)malloc(size_a * sizeof(float*));
+    float **a = (float**)calloc(1, size_a * sizeof(float*));
     if (a == NULL) {
         printf("Not enough memory to allocate for matrix.\n");
         return -1;
     }
 
     for (int i = 0; i < size_a; i++) {
-        a[i] = (float*)malloc(size_b * sizeof(float));
+        a[i] = (float*)calloc(1, size_b * sizeof(float));
         if (a[i] == NULL) {
             for (int j = i; j > 0; j--)
                 free(a[j]);
@@ -118,8 +101,10 @@ boolean compare_matrixes(float **a, int a_row, int a_column,
 
     for (int i = 0; i < a_row; i++)
     for (int j = 0; j < a_column; j++)
-    if (a[i][j] != b[i][j])
+    if (!(((a[i][j] + 100) > b[i][j]) && ((a[i][j] - 100) < b[i][j])))
         return FALSE;
+ //   if (a[i][j] != b[i][j])
+ //       return FALSE;
 
     return TRUE;
 }
@@ -239,6 +224,39 @@ int generate_matrix_to_file(char *path, int row, int column)
     return 0;
 }
 
+int get_one_dimension_matrix(int posX, int posY, int size, float **in, float **out)
+{
+    float *res = (float*)malloc(size * size * sizeof(float));
+    if (res == NULL) {
+        printf("There is not enough memory!\n");
+        return -1;
+    }
+
+    int k = 0;
+    for (int i = posX * size; i < posX * size + size; i++)
+    for (int j = posY * size; j < posY * size + size; j++)
+        res[k++] = in[i][j];
+
+    *out = res;
+    return 0;
+}
+
+int convert_one_to_two_dimension_with(int size, float *in, float **out)
+{
+    for (int i = 0; i < size; i++)
+    for (int j = 0; j < size; j++)
+        out[i][j] = in[i*size + j];
+
+    return 0;
+}
+
+void sum(float **from, float **to, int size)
+{
+    for (int i = 0; i < size; i++)
+    for (int j = 0; j < size; j++)
+        to[i][j] += from[i][j];
+}
+
 int basic_multiplication(boolean is_generate, boolean is_print,
     boolean is_compare, boolean is_save, boolean is_cuda,
     char* a_path, char* b_path, char* c_path, char* e_path,
@@ -275,8 +293,142 @@ int basic_multiplication(boolean is_generate, boolean is_print,
             printf("Troubles with CUDA multiplication.\n");
             return -1;
         }
-    } else {
+    } else if (0) {
         mm(a, b, c, size_a1, size_b1, size_b2);
+    } else if (1) {
+        int size = 2;
+        float *pa[4], *pb[4], *pc[4];
+        if ((get_one_dimension_matrix(0, 0, size_a1 / 2, a, &pa[0]) != 0) ||
+            (get_one_dimension_matrix(0, 1, size_a1 / 2, a, &pa[1]) != 0) ||
+            (get_one_dimension_matrix(1, 0, size_a1 / 2, a, &pa[2]) != 0) ||
+            (get_one_dimension_matrix(1, 1, size_a1 / 2, a, &pa[3]) != 0)) {
+            printf("A convertion failed\n");
+        }
+        if ((get_one_dimension_matrix(0, 0, size_a1 / 2, b, &pb[0]) != 0) ||
+            (get_one_dimension_matrix(0, 1, size_a1 / 2, b, &pb[1]) != 0) ||
+            (get_one_dimension_matrix(1, 0, size_a1 / 2, b, &pb[2]) != 0) ||
+            (get_one_dimension_matrix(1, 1, size_a1 / 2, b, &pb[3]) != 0)) {
+            printf("B convertion failed\n");
+        }
+        const int line = 640;// size_a1 / 2;
+        float **ca[4], **cb[4], **cc[4];
+        allocate_matrix(&ca[0], line, line);        allocate_matrix(&cb[0], line, line);        allocate_matrix(&cc[0], line, line);
+        allocate_matrix(&ca[1], line, line);        allocate_matrix(&cb[1], line, line);        allocate_matrix(&cc[1], line, line);
+        allocate_matrix(&ca[2], line, line);        allocate_matrix(&cb[2], line, line);        allocate_matrix(&cc[2], line, line);
+        allocate_matrix(&ca[3], line, line);        allocate_matrix(&cb[3], line, line);        allocate_matrix(&cc[3], line, line);
+
+        //float ca[4][640][640] = { 0 };// , ca1[640][640], ca2[640][640], ca3[640][640];
+        //float cb[4][640][640] = { 0 };// , cb1[640][640], cb2[640][640], cb3[640][640];
+        //float cc[4][640][640] = { 0 };// , cc1[640][640], cc2[640][640], cc3[640][640];
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[0], ca[0]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[1], ca[1]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[2], ca[2]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[3], ca[3]);
+
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[0], cb[0]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[1], cb[1]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[2], cb[2]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[3], cb[3]);
+
+        float **tmp[8];
+        for (int i = 0; i < 8; i++)
+            allocate_matrix(&tmp[i], line, line);
+//        float tmp0[640][640], tmp1[640][640], tmp2[640][640], tmp3[640][640], tmp4[640][640], tmp5[640][640], tmp6[640][640], tmp7[640][640];
+
+        mm(ca[0], cb[0], tmp[0], line, line, line);
+        mm(ca[1], cb[2], tmp[1], line, line, line);
+        mm(ca[0], cb[1], tmp[2], line, line, line);
+        mm(ca[1], cb[3], tmp[3], line, line, line);
+        mm(ca[2], cb[0], tmp[4], line, line, line);
+        mm(ca[3], cb[2], tmp[5], line, line, line);
+        mm(ca[2], cb[1], tmp[6], line, line, line);
+        mm(ca[3], cb[3], tmp[7], line, line, line);
+
+        sum(tmp[0], cc[0], line);
+        sum(tmp[2], cc[1], line);
+        sum(tmp[4], cc[2], line);
+        sum(tmp[6], cc[3], line);
+
+        sum(tmp[1], cc[0], line);
+        sum(tmp[3], cc[1], line);
+        sum(tmp[5], cc[2], line);
+        sum(tmp[7], cc[3], line);
+
+        for (int i = 0; i < line * 2; i++)
+        for (int j = 0; j < line * 2; j++) {
+            if (i < line) {
+                c[i][j] = (j < line) ? cc[0][i][j] : cc[1][i][j - line];
+            } else {
+                c[i][j] = (j < line) ? cc[2][i - line][j] : cc[3][i - line][j - line];
+            }
+        }
+    } else {
+        int size = 2;
+        float *pa[4], *pb[4], *pc[4];
+        if ((get_one_dimension_matrix(0, 0, size_a1 / 2, a, &pa[0]) != 0) ||
+            (get_one_dimension_matrix(0, 1, size_a1 / 2, a, &pa[1]) != 0) ||
+            (get_one_dimension_matrix(1, 0, size_a1 / 2, a, &pa[2]) != 0) ||
+            (get_one_dimension_matrix(1, 1, size_a1 / 2, a, &pa[3]) != 0)) {
+            printf("A convertion failed\n");
+        }
+        if ((get_one_dimension_matrix(0, 0, size_a1 / 2, b, &pb[0]) != 0) ||
+            (get_one_dimension_matrix(0, 1, size_a1 / 2, b, &pb[1]) != 0) ||
+            (get_one_dimension_matrix(1, 0, size_a1 / 2, b, &pb[2]) != 0) ||
+            (get_one_dimension_matrix(1, 1, size_a1 / 2, b, &pb[3]) != 0)) {
+            printf("B convertion failed\n");
+        }
+        const int line = 2;// 640;// size_a1 / 2;
+        float **ca[4], **cb[4], **cc[4];
+        allocate_matrix(&ca[0], line, line);        allocate_matrix(&cb[0], line, line);        allocate_matrix(&cc[0], line, line);
+        allocate_matrix(&ca[1], line, line);        allocate_matrix(&cb[1], line, line);        allocate_matrix(&cc[1], line, line);
+        allocate_matrix(&ca[2], line, line);        allocate_matrix(&cb[2], line, line);        allocate_matrix(&cc[2], line, line);
+        allocate_matrix(&ca[3], line, line);        allocate_matrix(&cb[3], line, line);        allocate_matrix(&cc[3], line, line);
+
+        //float ca[4][640][640] = { 0 };// , ca1[640][640], ca2[640][640], ca3[640][640];
+        //float cb[4][640][640] = { 0 };// , cb1[640][640], cb2[640][640], cb3[640][640];
+        //float cc[4][640][640] = { 0 };// , cc1[640][640], cc2[640][640], cc3[640][640];
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[0], ca[0]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[1], ca[1]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[2], ca[2]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pa[3], ca[3]);
+
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[0], cb[0]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[1], cb[1]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[2], cb[2]);
+        convert_one_to_two_dimension_with(size_a1 / 2, pb[3], cb[3]);
+
+        float **tmp[8];
+        for (int i = 0; i < 8; i++)
+            allocate_matrix(&tmp[i], line, line);
+        //        float tmp0[640][640], tmp1[640][640], tmp2[640][640], tmp3[640][640], tmp4[640][640], tmp5[640][640], tmp6[640][640], tmp7[640][640];
+
+        mm(ca[0], cb[0], tmp[0], line, line, line);
+        mm(ca[1], cb[2], tmp[1], line, line, line);
+        mm(ca[0], cb[1], tmp[2], line, line, line);
+        mm(ca[1], cb[3], tmp[3], line, line, line);
+        mm(ca[2], cb[0], tmp[4], line, line, line);
+        mm(ca[3], cb[2], tmp[5], line, line, line);
+        mm(ca[2], cb[1], tmp[6], line, line, line);
+        mm(ca[3], cb[3], tmp[7], line, line, line);
+
+        sum(tmp[0], cc[0], line);
+        sum(tmp[2], cc[1], line);
+        sum(tmp[4], cc[2], line);
+        sum(tmp[6], cc[3], line);
+
+        sum(tmp[1], cc[0], line);
+        sum(tmp[3], cc[1], line);
+        sum(tmp[5], cc[2], line);
+        sum(tmp[7], cc[3], line);
+
+        for (int i = 0; i < line * 2; i++)
+        for (int j = 0; j < line * 2; j++) {
+            if (i < line) {
+                c[i][j] = (j < line) ? cc[0][i][j] : cc[1][i][j - line];
+            } else {
+                c[i][j] = (j < line) ? cc[2][i - line][j] : cc[3][i - line][j - line];
+            }
+        }
     }
 
     if (is_save) {
@@ -318,15 +470,19 @@ int main()
     printf("This is a native C program.\n");
 
 #if 0
-    if ((generate_matrix_to_file(PATH_TO_MATRIX_A, 1280, 1280) != 0) ||
-        generate_matrix_to_file(PATH_TO_MATRIX_B, 1280, 1280) != 0) {
+    if ((generate_matrix_to_file(PATH_TO_MATRIX_A, 4, 4) != 0) ||
+        generate_matrix_to_file(PATH_TO_MATRIX_B, 4, 4) != 0) {
         return -1;
     }
 #endif
 
+    //cuda_get_and_print_info();
+    //system("pause");
+    //return 0;
+
     start = GetTickCount();
-    if (basic_multiplication(FALSE, FALSE, TRUE, FALSE, FALSE,
-        PATH_TO_MATRIX_A, PATH_TO_MATRIX_B, PATH_TO_MATRIX_C, PATH_TO_MATRIX_C,
+    if (basic_multiplication(FALSE, FALSE, TRUE, TRUE, FALSE,
+        PATH_TO_MATRIX_A, PATH_TO_MATRIX_B, PATH_TO_MATRIX_D, PATH_TO_MATRIX_C,
         SIZE_A1, SIZE_B1, SIZE_A2, SIZE_B2) != 0) {
         printf("Error during multiplication.\n");
         system("pause");
