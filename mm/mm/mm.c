@@ -370,7 +370,6 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         }
     } else if (1) {
         int side = 640;
-//        int matrix_count = (size_a1 / side) * (size_a1 / side);
         int matrix_on_side = (size_a1 / side);
         int matrix_count = matrix_on_side * matrix_on_side;
 
@@ -396,112 +395,42 @@ int basic_multiplication(boolean is_generate, boolean is_print,
             }
         }
 
-//        const int line = 640;// size_a1 / 2;
-//        FLOAT **ca[4], **cb[4], **cc[4];
-
-////////////////////////////////////////////////////////////////////////
-        FLOAT ***ca, ***cb, ***cc;
-        ca = (FLOAT ***)calloc(matrix_count, sizeof(FLOAT**));
-        cb = (FLOAT ***)calloc(matrix_count, sizeof(FLOAT**));
-        cc = (FLOAT ***)calloc(matrix_count, sizeof(FLOAT**));
-        if (ca == NULL || cb == NULL || cc == NULL) {
-            printf("Cannot allocate memory for matrixes.\n");
+        FLOAT ****cca = (FLOAT****)malloc(matrix_on_side * sizeof(FLOAT***));
+        FLOAT ****ccb = (FLOAT****)malloc(matrix_on_side * sizeof(FLOAT***));
+        FLOAT ****ccc = (FLOAT****)malloc(matrix_on_side * sizeof(FLOAT***));
+        if (cca == NULL || ccb == NULL || ccc == NULL) {
+            //TODO: Memory leaks
             return -1;
         }
 
-        for (int i = 0; i < matrix_count; i++) {
-            if ((allocate_matrix(&ca[i], side, side) != 0) ||
-                (allocate_matrix(&cb[i], side, side) != 0) || 
-                (allocate_matrix(&cc[i], side, side) != 0)) {
-                //TODO: Memory leaks
-                printf("Cannot allocate 2D matrixes.\n");
+        for (int i = 0; i < matrix_on_side; i++) {
+            cca[i] = (FLOAT***)malloc(matrix_on_side * sizeof(FLOAT**));
+            ccb[i] = (FLOAT***)malloc(matrix_on_side * sizeof(FLOAT**));
+            ccc[i] = (FLOAT***)malloc(matrix_on_side * sizeof(FLOAT**));
+            if (cca[i] == NULL || ccb[i] == NULL || ccc[i] == NULL)
                 return -1;
+        }
+
+        for (int i = 0; i < matrix_on_side; i++) {
+            for (int j = 0; j < matrix_on_side; j++) {
+                if ((allocate_matrix(&cca[i][j], side, side) != 0) ||
+                    (allocate_matrix(&ccb[i][j], side, side) != 0) || 
+                    (allocate_matrix(&ccc[i][j], side, side) != 0)) {
+                    //TODO: Memory leaks
+                    printf("Cannot allocate 2D matrixes.\n");
+                    return -1;
+                }
             }
         }
 
-
-        FLOAT ****cca = (FLOAT****)calloc(2, sizeof(FLOAT***));
-        if (cca == NULL)
-            return -1;
-        for (int i = 0; i < 2; i++) {
-            cca[i] = (FLOAT***)calloc(2, sizeof(FLOAT**));
-            if (cca[i] == NULL)
-                return -1;
+        int number = 0;
+        for (int i = 0; i < matrix_on_side; i++) {
+            for (int j = 0; j < matrix_on_side; j++) {
+                convert_one_to_two_dimension_with(side, pa[number], cca[i][j]);
+                convert_one_to_two_dimension_with(side, pb[number++], ccb[i][j]);
+            }
         }
-        cca[0][0] = ca[0];
-        cca[0][1] = ca[1];
-        cca[1][0] = ca[2];
-        cca[1][1] = ca[3];
 
-        FLOAT ****ccb = (FLOAT****)calloc(2, sizeof(FLOAT***));
-        if (ccb == NULL)
-            return -1;
-        for (int i = 0; i < 2; i++) {
-            ccb[i] = (FLOAT***)calloc(2, sizeof(FLOAT**));
-            if (ccb[i] == NULL)
-                return -1;
-        }
-        ccb[0][0] = cb[0];
-        ccb[0][1] = cb[1];
-        ccb[1][0] = cb[2];
-        ccb[1][1] = cb[3];
-
-        /*
-        allocate_matrix(&ca[0], line, line);        allocate_matrix(&cb[0], line, line);        allocate_matrix(&cc[0], line, line);
-        allocate_matrix(&ca[1], line, line);        allocate_matrix(&cb[1], line, line);        allocate_matrix(&cc[1], line, line);
-        allocate_matrix(&ca[2], line, line);        allocate_matrix(&cb[2], line, line);        allocate_matrix(&cc[2], line, line);
-        allocate_matrix(&ca[3], line, line);        allocate_matrix(&cb[3], line, line);        allocate_matrix(&cc[3], line, line);
-        */
-        //FLOAT ca[4][640][640] = { 0 };// , ca1[640][640], ca2[640][640], ca3[640][640];
-        //FLOAT cb[4][640][640] = { 0 };// , cb1[640][640], cb2[640][640], cb3[640][640];
-        //FLOAT cc[4][640][640] = { 0 };// , cc1[640][640], cc2[640][640], cc3[640][640];
- 
-        for (int i = 0; i < matrix_count; i++) {
-            convert_one_to_two_dimension_with(side, pa[i], ca[i]);
-            convert_one_to_two_dimension_with(side, pb[i], cb[i]);
-        }
-        /*
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[0], ca[0]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[1], ca[1]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[2], ca[2]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pa[3], ca[3]);
-
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[0], cb[0]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[1], cb[1]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[2], cb[2]);
-        convert_one_to_two_dimension_with(size_a1 / 2, pb[3], cb[3]);
-        */
-        int line = side;
-//        FLOAT **tmp[8];
-//        for (int i = 0; i < 8; i++)
-//            allocate_matrix(&tmp[i], line, line);
-        //        FLOAT tmp0[640][640], tmp1[640][640], tmp2[640][640], tmp3[640][640], tmp4[640][640], tmp5[640][640], tmp6[640][640], tmp7[640][640];
-        
-        
-        FLOAT ****ccc = (FLOAT****)calloc(2, sizeof(FLOAT***));
-        if (ccc == NULL)
-            return -1;
-        for (int i = 0; i < 2; i++) {
-            ccc[i] = (FLOAT***)calloc(2, sizeof(FLOAT**));
-            if (ccc[i] == NULL)
-                return -1;
-        }
-        ccc[0][0] = cc[0];
-        ccc[0][1] = cc[1];
-        ccc[1][0] = cc[2];
-        ccc[1][1] = cc[3];
-
-
-//        FLOAT sum = 0;
-/*        FLOAT **tt = (FLOAT**)calloc(side, sizeof(FLOAT*));
-        if (tt == NULL)
-            return -1;
-        for (int i = 0; i < side; i++) {
-            tt[i] = (FLOAT*)calloc(side, sizeof(FLOAT));
-            if (tt[i] == NULL)
-                return -1;
-        }
-  */
         FLOAT **tt;
         if (allocate_matrix(&tt, side, side) != 0) {
             //TODO: Memory leaks
@@ -514,63 +443,17 @@ int basic_multiplication(boolean is_generate, boolean is_print,
                     mm(cca[i][k], ccb[k][j], tt, side, side, side);
                     sum(tt, ccc[i][j], side);
                     tozerator(tt, side);
-                    //sum = sum + ca[i][k] * cb[k][j];
                 }
-                //tozerator(ccc[i][j], side);
-                //sum(tt, ccc[i][j], side);// = sum;
-                //tozerator(tt, side);// sum = 0;
             }
         }
-        
-        /*
-        mm(ca[0], cb[0], tmp[0], line, line, line);
-        mm(ca[1], cb[2], tmp[1], line, line, line);
-        mm(ca[0], cb[1], tmp[2], line, line, line);
-        mm(ca[1], cb[3], tmp[3], line, line, line);
-        mm(ca[2], cb[0], tmp[4], line, line, line);
-        mm(ca[3], cb[2], tmp[5], line, line, line);
-        mm(ca[2], cb[1], tmp[6], line, line, line);
-        mm(ca[3], cb[3], tmp[7], line, line, line);
 
-        sum(tmp[0], ccc[0][0], line);
-        sum(tmp[2], ccc[0][1], line);
-        sum(tmp[4], ccc[1][0], line);
-        sum(tmp[6], ccc[1][1], line);
-
-        sum(tmp[1], ccc[0][0], line);
-        sum(tmp[3], ccc[0][1], line);
-        sum(tmp[5], ccc[1][0], line);
-        sum(tmp[7], ccc[1][1], line);
-        */
-        /*
-        sum(tmp[0], cc[0], line);
-        sum(tmp[2], cc[1], line);
-        sum(tmp[4], cc[2], line);
-        sum(tmp[6], cc[3], line);
-
-        sum(tmp[1], cc[0], line);
-        sum(tmp[3], cc[1], line);
-        sum(tmp[5], cc[2], line);
-        sum(tmp[7], cc[3], line);
-        
-        for (int i = 0; i < line * 2; i++)
-        for (int j = 0; j < line * 2; j++) {
-            if (i < line) {
-                c[i][j] = (j < line) ? cc[0][i][j] : cc[1][i][j - line];
+        for (int i = 0; i < side * matrix_on_side; i++)
+        for (int j = 0; j < side * matrix_on_side; j++) {
+            if (i < side) {
+                c[i][j] = (j < side) ? ccc[0][0][i][j] : ccc[0][1][i][j - side];
             }
             else {
-                c[i][j] = (j < line) ? cc[2][i - line][j] : cc[3][i - line][j - line];
-            }
-        }*/
-
-
-        for (int i = 0; i < line * 2; i++)
-        for (int j = 0; j < line * 2; j++) {
-            if (i < line) {
-                c[i][j] = (j < line) ? ccc[0][0][i][j] : ccc[0][1][i][j - line];
-            }
-            else {
-                c[i][j] = (j < line) ? ccc[1][0][i - line][j] : ccc[1][1][i - line][j - line];
+                c[i][j] = (j < side) ? ccc[1][0][i - side][j] : ccc[1][1][i - side][j - side];
             }
         }
     } else {
