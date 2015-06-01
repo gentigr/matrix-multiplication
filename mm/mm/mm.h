@@ -4,8 +4,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include "mpi.h"
 
+#if 0
 #include <Windows.h>
+#else
+#define boolean bool
+#define TRUE 1
+#define FALSE 0
+#endif
 
 #define FLOAT float
 

@@ -242,6 +242,23 @@ int get_one_dimension_matrix(int posX, int posY, int size, FLOAT **in, FLOAT **o
     return 0;
 }
 
+int _convert_two_to_one_dimension(int size, float **mt, float **pmt)
+{
+    float *res = (float*)malloc(size * size * sizeof(float));
+    if (res == NULL) {
+        printf("There is not enough memory!\n");
+        return -1;
+    }
+
+    for (int i = 0; i < size; i++)
+        for (int j = 0; j < size; j++)
+            res[i*size + j] = mt[i][j];
+
+    *pmt = res;
+
+    return 0;
+}
+
 void convert_one_to_two_dimension_with(int size, FLOAT *in, FLOAT **out)
 {
     for (int i = 0; i < size; i++)
@@ -270,6 +287,13 @@ int basic_multiplication(boolean is_generate, boolean is_print,
 {
     FLOAT **a, **b, **c;
 
+    int id;
+    MPI_Comm_rank(MPI_COMM_WORLD, &id);
+    printf("%d: basic_multiplication.\n", id);
+    if (id != 0)
+        goto one;
+    
+    printf("%d: basic_multiplication after goto.\n", id);
     if (is_generate) {
         if (allocate_matrixes(&a, &b, &c, size_a1, size_b1, size_a2, size_b2) != 0)
             return -1;
@@ -294,14 +318,16 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         return -1;
     }
 
+one:
+//    int id = 0;
     if (is_cuda) {
-        if (cuda_mm(a, b, c, size_a1) != 0) {
-            printf("Troubles with CUDA multiplication.\n");
-            return -1;
-        }
+//        if (cuda_mm(a, b, c, size_a1) != 0) {
+//            printf("Troubles with CUDA multiplication.\n");
+//            return -1;
+//        }
     } else if (0) {
         mm(a, b, c, size_a1, size_b1, size_b2);
-    } else {
+    } else if (0) {
         int side = 640;
         int matrix_on_side = (size_a1 / side);
         int matrix_count = matrix_on_side * matrix_on_side;
@@ -389,6 +415,213 @@ int basic_multiplication(boolean is_generate, boolean is_print,
                 c[i][j] = (j < side) ? ccc[1][0][i - side][j] : ccc[1][1][i - side][j - side];
             }
         }
+    } else {
+//mpimpi
+        int side = 640;//2;//640;
+        int matrix_on_side = (1280 / side);//(4/*1280*/ / side);
+        int matrix_count = matrix_on_side * matrix_on_side;
+
+        int processId, processCount;
+        MPI_Comm_rank(MPI_COMM_WORLD, &processId);
+        MPI_Comm_size(MPI_COMM_WORLD, &processCount);
+        MPI_Status status;
+
+        id = processId;
+        if (processId == 0) {
+            printf("processId == 0\n");
+            FLOAT **pa, **pb, **pc;
+            pa = (FLOAT **)calloc(matrix_count, sizeof(FLOAT*));
+            pb = (FLOAT **)calloc(matrix_count, sizeof(FLOAT*));
+            pc = (FLOAT **)calloc(matrix_count, sizeof(FLOAT*));
+            if (pa == NULL || pb == NULL || pc == NULL) {
+                //TODO: Memory leaks in this case
+                printf("There is not enough memory.\n");
+                return -1;
+            }
+
+            int matrix_number = 0;
+            for (int i = 0; i < matrix_on_side; i++) {
+                for (int j = 0; j < matrix_on_side; j++) {
+                    if ((get_one_dimension_matrix(i, j, side, a, &pa[matrix_number]) != 0) ||
+                        (get_one_dimension_matrix(i, j, side, b, &pb[matrix_number++]) != 0)) {
+                        //TODO: Memory leaks in case of error
+                        printf("Error during conversation.\n");
+                        return -1;
+                    }
+                }
+            }
+
+            int mtype = 1;
+//            float *ms = (float*)malloc(20*sizeof(float));
+//            for (int i = 0; i < 20; i++)
+//                ms[i] = i;
+            printf("0 matrix_count = %d, side = %d\n", matrix_count, side);
+            for (int destination = 1; destination < processCount; destination++) {
+                for (int i = 0; i < matrix_count; i++) {
+                    //printf("============== 0 SEND: %f %f %f %f\n", ms[i*matrix_count], ms[i*matrix_count+1], ms[i*matrix_count+2], ms[i*matrix_count+3]);
+                    //MPI_Send(&ms[i*matrix_count], 4, MPI_FLOAT, destination, mtype, MPI_COMM_WORLD);
+                    MPI_Send(pa[i], side * side, MPI_FLOAT, destination, mtype, MPI_COMM_WORLD);
+//                    printf("============== 0 SEND: pa %d: %f %f %f %f\n", i, pa[i][0], pa[i][1], pa[i][2], pa[i][3]);
+                    MPI_Send(pb[i], side * side, MPI_FLOAT, destination, mtype, MPI_COMM_WORLD);
+//                    printf("============== 0 SEND: pb %d: %f %f %f %f\n", i, pb[i][0], pb[i][1], pb[i][2], pb[i][3]);
+                }
+            }
+
+            printf("0 side = %d, matrix_count = %d\n", side, matrix_count);
+            for(int i = 0; i < matrix_count; i++)
+                pc[i] = (FLOAT *)malloc(side * side * sizeof(FLOAT));
+
+            int source = 1;
+            mtype = 2;
+            for (int i = 0; i < matrix_count; i++) {
+                MPI_Recv(pc[i], side * side, MPI_FLOAT, source, mtype, MPI_COMM_WORLD, &status);
+//                printf("============== 0 RECEIVE: pc %d: %f %f %f %f\n", i, pc[i][0], pc[i][1], pc[i][2], pc[i][3]);
+                //TODO: Verify status
+            }
+
+            FLOAT ****ccc = (FLOAT****)malloc(matrix_on_side * sizeof(FLOAT***));
+            if (ccc == NULL)
+                return -1;
+
+            for (int i = 0; i < matrix_on_side; i++) {
+                ccc[i] = (FLOAT***)malloc(matrix_on_side * sizeof(FLOAT**));
+                if (ccc[i] == NULL)
+                    return -1;
+            }
+
+            for (int i = 0; i < matrix_on_side; i++) {
+                for (int j = 0; j < matrix_on_side; j++) {
+                    if (allocate_matrix(&ccc[i][j], side, side) != 0) {
+                        //TODO: Memory leaks
+                        printf("Cannot allocate 2D matrixes.\n");
+                        return -1;
+                    }
+                }
+            }
+
+            int number = 0;
+            for (int i = 0; i < matrix_on_side; i++) {
+                for (int j = 0; j < matrix_on_side; j++) {
+                    convert_one_to_two_dimension_with(side, pc[number++], ccc[i][j]);
+                }
+            }
+
+            for (int i = 0; i < side * matrix_on_side; i++)
+            for (int j = 0; j < side * matrix_on_side; j++) {
+                if (i < side) {
+                    c[i][j] = (j < side) ? ccc[0][0][i][j] : ccc[0][1][i][j - side];
+                } else {
+                    c[i][j] = (j < side) ? ccc[1][0][i - side][j] : ccc[1][1][i - side][j - side];
+                }
+            }
+
+        } else if (processId > 0) {
+            printf("1 ============== 1 processId > 0\n");
+            FLOAT **pa, **pb, **pc;
+            pa = (FLOAT **)calloc(matrix_count, sizeof(FLOAT*));
+            pb = (FLOAT **)calloc(matrix_count, sizeof(FLOAT*));
+            pc = (FLOAT **)calloc(matrix_count, sizeof(FLOAT*));
+            printf("1 ============== 2 processId > 0\n");
+            if (pa == NULL || pb == NULL || pc == NULL) {
+                //TODO: Memory leaks in this case
+                printf("There is not enough memory.\n");
+                return -1;
+            }
+            printf("1 matrix_count %d ============== 3 processId > 0\n", matrix_count);
+
+            int source = 0, mtype = 1;
+
+            float *ms = (float*)malloc(20*sizeof(float));
+            for (int i = 0; i < matrix_count; i++) {
+                //TODO: Memory verifying
+//                printf("============== 0 in for ac MPI_Recv\n");
+                pa[i] = (FLOAT *)calloc(side * side, sizeof(FLOAT));
+                pb[i] = (FLOAT *)calloc(side * side, sizeof(FLOAT));
+                pc[i] = (FLOAT *)calloc(side * side, sizeof(FLOAT));
+
+//                printf("============== 1 in for ac MPI_Recv: %d\n", i);
+                int j = 0;
+                //MPI_Recv(&ms[i*matrix_count], 4, MPI_FLOAT, source, mtype, MPI_COMM_WORLD, &status);
+                //printf("============== 1 RECEIVE: %f %f %f %f\n", ms[i*matrix_count], ms[i*matrix_count+1], ms[i*matrix_count+2], ms[i*matrix_count+3]);
+                MPI_Recv(pa[i], side * side, MPI_FLOAT, source, mtype, MPI_COMM_WORLD, &status);
+//                printf("============== 1 RECEIVE: pa %d: %f %f %f %f\n", i, pa[i][0], pa[i][1], pa[i][2], pa[i][3]);
+                MPI_Recv(pb[i], side * side, MPI_FLOAT, source, mtype, MPI_COMM_WORLD, &status);
+//                printf("============== 1 RECEIVE: pb %d: %f %f %f %f\n", i, pb[i][0], pb[i][1], pb[i][2], pb[i][3]);
+            }
+
+            FLOAT ****cca = (FLOAT****)malloc(matrix_on_side * sizeof(FLOAT***));
+            FLOAT ****ccb = (FLOAT****)malloc(matrix_on_side * sizeof(FLOAT***));
+            FLOAT ****ccc = (FLOAT****)malloc(matrix_on_side * sizeof(FLOAT***));
+            if (cca == NULL || ccb == NULL || ccc == NULL) {
+                //TODO: Memory leaks
+                return -1;
+            }
+
+            for (int i = 0; i < matrix_on_side; i++) {
+                cca[i] = (FLOAT***)malloc(matrix_on_side * sizeof(FLOAT**));
+                ccb[i] = (FLOAT***)malloc(matrix_on_side * sizeof(FLOAT**));
+                ccc[i] = (FLOAT***)malloc(matrix_on_side * sizeof(FLOAT**));
+                if (cca[i] == NULL || ccb[i] == NULL || ccc[i] == NULL)
+                    return -1;
+            }
+
+            for (int i = 0; i < matrix_on_side; i++) {
+                for (int j = 0; j < matrix_on_side; j++) {
+                    if ((allocate_matrix(&cca[i][j], side, side) != 0) ||
+                        (allocate_matrix(&ccb[i][j], side, side) != 0) || 
+                        (allocate_matrix(&ccc[i][j], side, side) != 0)) {
+                        //TODO: Memory leaks
+                        printf("Cannot allocate 2D matrixes.\n");
+                        return -1;
+                    }
+                }
+            }
+
+            int number = 0;
+            for (int i = 0; i < matrix_on_side; i++) {
+                for (int j = 0; j < matrix_on_side; j++) {
+                    convert_one_to_two_dimension_with(side, pa[number], cca[i][j]);
+                    convert_one_to_two_dimension_with(side, pb[number++], ccb[i][j]);
+                }
+            }
+
+            FLOAT **tt;
+            if (allocate_matrix(&tt, side, side) != 0) {
+                //TODO: Memory leaks
+                return -1;
+            }
+
+            for (int i = 0; i < matrix_on_side; i++) {
+                for (int j = 0; j < matrix_on_side; j++) {
+                    for (int k = 0; k < matrix_on_side; k++) {
+                        mm(cca[i][k], ccb[k][j], tt, side, side, side);
+                        sum(tt, ccc[i][j], side);
+                        tozerator(tt, side);
+                    }
+                }
+            }
+
+            int destination = 0;
+            int number1 = 0;
+            mtype = 2;
+            for (int i = 0; i < matrix_on_side; i++)
+            for (int j = 0; j < matrix_on_side; j++) {
+                _convert_two_to_one_dimension(side, ccc[i][j], &pc[number1]);
+                MPI_Send(pc[number1], side * side, MPI_FLOAT, destination, mtype, MPI_COMM_WORLD);
+//                printf("============== 1 SEND: pc %d: %f %f %f %f\n", number1, pc[number1][0], pc[number1][1], pc[number1][2], pc[number1][3]);
+                number1++;
+            }
+
+//        for (int i = 0; i < side * matrix_on_side; i++)
+//        for (int j = 0; j < side * matrix_on_side; j++) {
+//            if (i < side) {
+//                c[i][j] = (j < side) ? ccc[0][0][i][j] : ccc[0][1][i][j - side];
+//            }
+//            else {
+//                c[i][j] = (j < side) ? ccc[1][0][i - side][j] : ccc[1][1][i - side][j - side];
+//            }
+//        }
+        }
     }
 
     if (is_save) {
@@ -404,7 +637,7 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         print_matrix(b, size_a2, size_b2);
         print_matrix(c, size_a1, size_b2);
     }
-
+if (id == 0) {
     if (is_compare) {
         printf("Start comparing the result with etalon.\n");
         FLOAT **correct_matrix;
@@ -418,20 +651,26 @@ int basic_multiplication(boolean is_generate, boolean is_print,
             }
         }
     }
-
-    free_matrixes(a, b, c, size_a1, size_b1, size_a2, size_b2);
+}
+//    free_matrixes(a, b, c, size_a1, size_b1, size_a2, size_b2);
 
     return 0;
 }
 
-int main()
+int main(int argc, char **argv)
 {
     double start, end;
-    printf("This is a native C program.\n");
+    MPI_Init(&argc, &argv);
+
+    int processId, processCount;
+    MPI_Comm_rank(MPI_COMM_WORLD, &processId);
+    MPI_Comm_size(MPI_COMM_WORLD, &processCount);
+ 
+    printf("%d: This is a native C program. (%d)\n", processId, processCount);
 
 #if 0
     if ((generate_matrix_to_file(PATH_TO_MATRIX_A, 4, 4) != 0) ||
-        generate_matrix_to_file(PATH_TO_MATRIX_B, 4, 4) != 0) {
+        generate_matrix_to_file(PATH_TO_MATRIX_B, 1280, 1280) != 0) {
         return -1;
     }
 #endif
@@ -440,7 +679,8 @@ int main()
     //system("pause");
     //return 0;
 
-    start = GetTickCount();
+//    start = GetTickCount();
+
     if (basic_multiplication(FALSE, FALSE, TRUE, FALSE, FALSE,
         PATH_TO_MATRIX_A, PATH_TO_MATRIX_B, PATH_TO_MATRIX_D, PATH_TO_MATRIX_C,
         SIZE_A1, SIZE_B1, SIZE_A2, SIZE_B2) != 0) {
@@ -448,9 +688,10 @@ int main()
         system("pause");
         return -1;
     }
-    end = GetTickCount();
-    printf("Time of valuation: %f ms\n", end - start);
+//    end = GetTickCount();
+//    printf("Time of valuation: %f ms\n", end - start);
 
-    system("pause");
+    MPI_Finalize();
+//    system("pause");
     return 0;
 }
