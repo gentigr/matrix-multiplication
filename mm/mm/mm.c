@@ -12,16 +12,16 @@
 #define MAX_ELEMENT 1000
 
 // MATRIX
-int allocate_matrix(float ***mt, int size_a, int size_b)
+int allocate_matrix(FLOAT ***mt, int size_a, int size_b)
 {
-    float **a = (float**)calloc(1, size_a * sizeof(float*));
+    FLOAT **a = (FLOAT**)calloc(1, size_a * sizeof(FLOAT*));
     if (a == NULL) {
         printf("Not enough memory to allocate for matrix.\n");
         return -1;
     }
 
     for (int i = 0; i < size_a; i++) {
-        a[i] = (float*)calloc(1, size_b * sizeof(float));
+        a[i] = (FLOAT*)calloc(1, size_b * sizeof(FLOAT));
         if (a[i] == NULL) {
             for (int j = i; j > 0; j--)
                 free(a[j]);
@@ -33,14 +33,14 @@ int allocate_matrix(float ***mt, int size_a, int size_b)
     return 0;
 }
 
-void free_matrix(float **mt, int size_a)
+void free_matrix(FLOAT **mt, int size_a)
 {
     for (int i = 0; i < size_a; i++)
         free(mt[i]);
     free(mt);
 }
 
-void generate_matrix(float **a, int size_a, int size_b)
+void generate_matrix(FLOAT **a, int size_a, int size_b)
 {
     srand((unsigned int)time(NULL));
     for (int i = 0; i < size_a; i++)
@@ -48,7 +48,7 @@ void generate_matrix(float **a, int size_a, int size_b)
         a[i][j] = (rand() % MAX_ELEMENT + 1) / 10.f;
 }
 
-void print_matrix(float **a, int size_a, int size_b)
+void print_matrix(FLOAT **a, int size_a, int size_b)
 {
     printf("--------------------------------------------------\n\n");
     for (int i = 0; i < size_a; i++) {
@@ -60,10 +60,10 @@ void print_matrix(float **a, int size_a, int size_b)
 }
 
 // MATRIXES
-int allocate_matrixes(float ***pa, float ***pb, float ***pc,
+int allocate_matrixes(FLOAT ***pa, FLOAT ***pb, FLOAT ***pc,
     int size_a1, int size_b1, int size_a2, int size_b2)
 {
-    float **a, **b, **c;
+    FLOAT **a, **b, **c;
 
     if (allocate_matrix(&a, size_a1, size_b1) != 0) {
         return -1;
@@ -85,7 +85,7 @@ int allocate_matrixes(float ***pa, float ***pb, float ***pc,
     return 0;
 }
 
-void free_matrixes(float **a, float **b, float **c,
+void free_matrixes(FLOAT **a, FLOAT **b, FLOAT **c,
     int size_a1, int size_b1, int size_a2, int size_b2)
 {
     free_matrix(a, size_a1);
@@ -93,15 +93,16 @@ void free_matrixes(float **a, float **b, float **c,
     free_matrix(c, size_a1);
 }
 
-boolean compare_matrixes(float **a, int a_row, int a_column,
-    float **b, int b_row, int b_column)
+boolean compare_matrixes(FLOAT **a, int a_row, int a_column,
+    FLOAT **b, int b_row, int b_column)
 {
     if (a_row != b_row || a_column != b_column)
         return FALSE;
-
+    
+    int comp = 12;
     for (int i = 0; i < a_row; i++)
     for (int j = 0; j < a_column; j++)
-    if (!(((a[i][j] + 100) > b[i][j]) && ((a[i][j] - 100) < b[i][j])))
+    if (!(((a[i][j] + comp) > b[i][j]) && ((a[i][j] - comp) < b[i][j])))
         return FALSE;
  //   if (a[i][j] != b[i][j])
  //       return FALSE;
@@ -109,7 +110,7 @@ boolean compare_matrixes(float **a, int a_row, int a_column,
     return TRUE;
 }
 
-int write_matrix_to_file(char *path, float **mt, int row, int column)
+int write_matrix_to_file(char *path, FLOAT **mt, int row, int column)
 {
     char error_message[] = "Error occured during writing to file for " \
         "saving with path = %s\n";
@@ -146,10 +147,10 @@ int write_matrix_to_file(char *path, float **mt, int row, int column)
     return 0;
 }
 
-int read_matrix_from_file(char *path, float ***pmt, int *prow, int *pcolumn)
+int read_matrix_from_file(char *path, FLOAT ***pmt, int *prow, int *pcolumn)
 {
     int row, column;
-    float **mt;
+    FLOAT **mt;
     char error_message[] = "Error occured during reading from file with path = %s\n";
 
     if (path == NULL || pmt == NULL || prow == NULL || pcolumn == NULL) {
@@ -195,9 +196,9 @@ int read_matrix_from_file(char *path, float ***pmt, int *prow, int *pcolumn)
 }
 
 // MULTIPLICATION
-void mm(float **a, float **b, float **c, int size_a, int size_b, int size_c)
+void mm(FLOAT **a, FLOAT **b, FLOAT **c, int size_a, int size_b, int size_c)
 {
-    float sum = 0;
+    FLOAT sum = 0;
 
     for (int i = 0; i < size_a; i++) {
         for (int j = 0; j < size_c; j++) {
@@ -212,7 +213,7 @@ void mm(float **a, float **b, float **c, int size_a, int size_b, int size_c)
 
 int generate_matrix_to_file(char *path, int row, int column)
 {
-    float **mt;
+    FLOAT **mt;
     if (allocate_matrix(&mt, row, column) != 0)
         return -1;
 
@@ -224,9 +225,9 @@ int generate_matrix_to_file(char *path, int row, int column)
     return 0;
 }
 
-int get_one_dimension_matrix(int posX, int posY, int size, float **in, float **out)
+int get_one_dimension_matrix(int posX, int posY, int size, FLOAT **in, FLOAT **out)
 {
-    float *res = (float*)malloc(size * size * sizeof(float));
+    FLOAT *res = (FLOAT*)malloc(size * size * sizeof(FLOAT));
     if (res == NULL) {
         printf("There is not enough memory!\n");
         return -1;
@@ -241,7 +242,7 @@ int get_one_dimension_matrix(int posX, int posY, int size, float **in, float **o
     return 0;
 }
 
-int convert_one_to_two_dimension_with(int size, float *in, float **out)
+int convert_one_to_two_dimension_with(int size, FLOAT *in, FLOAT **out)
 {
     for (int i = 0; i < size; i++)
     for (int j = 0; j < size; j++)
@@ -250,7 +251,7 @@ int convert_one_to_two_dimension_with(int size, float *in, float **out)
     return 0;
 }
 
-void sum(float **from, float **to, int size)
+void sum(FLOAT **from, FLOAT **to, int size)
 {
     for (int i = 0; i < size; i++)
     for (int j = 0; j < size; j++)
@@ -262,7 +263,7 @@ int basic_multiplication(boolean is_generate, boolean is_print,
     char* a_path, char* b_path, char* c_path, char* e_path,
     int size_a1, int size_b1, int size_a2, int size_b2)
 {
-    float **a, **b, **c;
+    FLOAT **a, **b, **c;
 
     if (is_generate) {
         if (allocate_matrixes(&a, &b, &c, size_a1, size_b1, size_a2, size_b2) != 0)
@@ -297,7 +298,7 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         mm(a, b, c, size_a1, size_b1, size_b2);
     } else if (1) {
         int size = 2;
-        float *pa[4], *pb[4], *pc[4];
+        FLOAT *pa[4], *pb[4], *pc[4];
         if ((get_one_dimension_matrix(0, 0, size_a1 / 2, a, &pa[0]) != 0) ||
             (get_one_dimension_matrix(0, 1, size_a1 / 2, a, &pa[1]) != 0) ||
             (get_one_dimension_matrix(1, 0, size_a1 / 2, a, &pa[2]) != 0) ||
@@ -311,15 +312,15 @@ int basic_multiplication(boolean is_generate, boolean is_print,
             printf("B convertion failed\n");
         }
         const int line = 640;// size_a1 / 2;
-        float **ca[4], **cb[4], **cc[4];
+        FLOAT **ca[4], **cb[4], **cc[4];
         allocate_matrix(&ca[0], line, line);        allocate_matrix(&cb[0], line, line);        allocate_matrix(&cc[0], line, line);
         allocate_matrix(&ca[1], line, line);        allocate_matrix(&cb[1], line, line);        allocate_matrix(&cc[1], line, line);
         allocate_matrix(&ca[2], line, line);        allocate_matrix(&cb[2], line, line);        allocate_matrix(&cc[2], line, line);
         allocate_matrix(&ca[3], line, line);        allocate_matrix(&cb[3], line, line);        allocate_matrix(&cc[3], line, line);
 
-        //float ca[4][640][640] = { 0 };// , ca1[640][640], ca2[640][640], ca3[640][640];
-        //float cb[4][640][640] = { 0 };// , cb1[640][640], cb2[640][640], cb3[640][640];
-        //float cc[4][640][640] = { 0 };// , cc1[640][640], cc2[640][640], cc3[640][640];
+        //FLOAT ca[4][640][640] = { 0 };// , ca1[640][640], ca2[640][640], ca3[640][640];
+        //FLOAT cb[4][640][640] = { 0 };// , cb1[640][640], cb2[640][640], cb3[640][640];
+        //FLOAT cc[4][640][640] = { 0 };// , cc1[640][640], cc2[640][640], cc3[640][640];
         convert_one_to_two_dimension_with(size_a1 / 2, pa[0], ca[0]);
         convert_one_to_two_dimension_with(size_a1 / 2, pa[1], ca[1]);
         convert_one_to_two_dimension_with(size_a1 / 2, pa[2], ca[2]);
@@ -330,10 +331,10 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         convert_one_to_two_dimension_with(size_a1 / 2, pb[2], cb[2]);
         convert_one_to_two_dimension_with(size_a1 / 2, pb[3], cb[3]);
 
-        float **tmp[8];
+        FLOAT **tmp[8];
         for (int i = 0; i < 8; i++)
             allocate_matrix(&tmp[i], line, line);
-//        float tmp0[640][640], tmp1[640][640], tmp2[640][640], tmp3[640][640], tmp4[640][640], tmp5[640][640], tmp6[640][640], tmp7[640][640];
+//        FLOAT tmp0[640][640], tmp1[640][640], tmp2[640][640], tmp3[640][640], tmp4[640][640], tmp5[640][640], tmp6[640][640], tmp7[640][640];
 
         mm(ca[0], cb[0], tmp[0], line, line, line);
         mm(ca[1], cb[2], tmp[1], line, line, line);
@@ -364,7 +365,7 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         }
     } else {
         int size = 2;
-        float *pa[4], *pb[4], *pc[4];
+        FLOAT *pa[4], *pb[4], *pc[4];
         if ((get_one_dimension_matrix(0, 0, size_a1 / 2, a, &pa[0]) != 0) ||
             (get_one_dimension_matrix(0, 1, size_a1 / 2, a, &pa[1]) != 0) ||
             (get_one_dimension_matrix(1, 0, size_a1 / 2, a, &pa[2]) != 0) ||
@@ -378,15 +379,15 @@ int basic_multiplication(boolean is_generate, boolean is_print,
             printf("B convertion failed\n");
         }
         const int line = 2;// 640;// size_a1 / 2;
-        float **ca[4], **cb[4], **cc[4];
+        FLOAT **ca[4], **cb[4], **cc[4];
         allocate_matrix(&ca[0], line, line);        allocate_matrix(&cb[0], line, line);        allocate_matrix(&cc[0], line, line);
         allocate_matrix(&ca[1], line, line);        allocate_matrix(&cb[1], line, line);        allocate_matrix(&cc[1], line, line);
         allocate_matrix(&ca[2], line, line);        allocate_matrix(&cb[2], line, line);        allocate_matrix(&cc[2], line, line);
         allocate_matrix(&ca[3], line, line);        allocate_matrix(&cb[3], line, line);        allocate_matrix(&cc[3], line, line);
 
-        //float ca[4][640][640] = { 0 };// , ca1[640][640], ca2[640][640], ca3[640][640];
-        //float cb[4][640][640] = { 0 };// , cb1[640][640], cb2[640][640], cb3[640][640];
-        //float cc[4][640][640] = { 0 };// , cc1[640][640], cc2[640][640], cc3[640][640];
+        //FLOAT ca[4][640][640] = { 0 };// , ca1[640][640], ca2[640][640], ca3[640][640];
+        //FLOAT cb[4][640][640] = { 0 };// , cb1[640][640], cb2[640][640], cb3[640][640];
+        //FLOAT cc[4][640][640] = { 0 };// , cc1[640][640], cc2[640][640], cc3[640][640];
         convert_one_to_two_dimension_with(size_a1 / 2, pa[0], ca[0]);
         convert_one_to_two_dimension_with(size_a1 / 2, pa[1], ca[1]);
         convert_one_to_two_dimension_with(size_a1 / 2, pa[2], ca[2]);
@@ -397,10 +398,10 @@ int basic_multiplication(boolean is_generate, boolean is_print,
         convert_one_to_two_dimension_with(size_a1 / 2, pb[2], cb[2]);
         convert_one_to_two_dimension_with(size_a1 / 2, pb[3], cb[3]);
 
-        float **tmp[8];
+        FLOAT **tmp[8];
         for (int i = 0; i < 8; i++)
             allocate_matrix(&tmp[i], line, line);
-        //        float tmp0[640][640], tmp1[640][640], tmp2[640][640], tmp3[640][640], tmp4[640][640], tmp5[640][640], tmp6[640][640], tmp7[640][640];
+        //        FLOAT tmp0[640][640], tmp1[640][640], tmp2[640][640], tmp3[640][640], tmp4[640][640], tmp5[640][640], tmp6[640][640], tmp7[640][640];
 
         mm(ca[0], cb[0], tmp[0], line, line, line);
         mm(ca[1], cb[2], tmp[1], line, line, line);
@@ -447,7 +448,7 @@ int basic_multiplication(boolean is_generate, boolean is_print,
 
     if (is_compare) {
         printf("Start comparing the result with etalon.\n");
-        float **correct_matrix;
+        FLOAT **correct_matrix;
         if ((read_matrix_from_file(e_path, &correct_matrix, &size_a1, &size_b2) != 0)) {
             printf("Troubles with reading matrix from file to verify correctness.\n");
         } else {
@@ -481,7 +482,7 @@ int main()
     //return 0;
 
     start = GetTickCount();
-    if (basic_multiplication(FALSE, FALSE, TRUE, TRUE, FALSE,
+    if (basic_multiplication(FALSE, FALSE, TRUE, FALSE, FALSE,
         PATH_TO_MATRIX_A, PATH_TO_MATRIX_B, PATH_TO_MATRIX_D, PATH_TO_MATRIX_C,
         SIZE_A1, SIZE_B1, SIZE_A2, SIZE_B2) != 0) {
         printf("Error during multiplication.\n");
